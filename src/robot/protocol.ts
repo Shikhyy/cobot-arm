@@ -1,15 +1,19 @@
 /**
  * Wire protocol shared with the Arduino firmware.
  *
- * The shipped `arm_controller.ino` understands exactly one frame:
+ * The app speaks one joint frame, with one value per servo channel in the
+ * order the sketch attaches them:
  *
- *     A,<base>,<shoulder>,<elbow>,<wrist>,<gripper>\n
+ *     A,<base>,<shoulder1>,<shoulder2>,<elbow>,<wrist>,<wristRot>,<gripper>\n
  *
- * `firmware/arm_controller_v2.ino` is a backwards compatible superset that also
- * understands G,OPEN / G,CLOSE / S,0 / HOME / P and reports state back.
- * Everything the app sends is valid for BOTH firmwares: the joint frame `A,...`
- * is the only thing the app *depends* on, the rest is an optional convenience
- * that older firmware silently ignores.
+ * Seven channels, six axes: the shoulder is driven by a mirrored pair, so
+ * `shoulder2` is always `180 − shoulder1`. The pair is mirrored here, in the
+ * store, so no path through the UI can desynchronise the two sides.
+ *
+ * `firmware/arm_controller_v2.ino` is the sketch that speaks this frame. It
+ * also understands G,OPEN / G,CLOSE / S,0 / HOME / P and reports state back.
+ * The original `arm_controller.ino` speaks the older five-channel frame and
+ * does **not** understand this one — flash v2.
  */
 
 import { JOINT_NAMES, type JointName } from "./config";

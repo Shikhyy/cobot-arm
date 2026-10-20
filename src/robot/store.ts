@@ -285,9 +285,10 @@ export const useRobotStore = create<RobotState>((set, get) => ({
   applyPreset(preset) {
     get().setJoints({
       base: preset.base,
-      shoulder: preset.shoulder,
+      shoulder1: preset.shoulder1,
       elbow: preset.elbow,
       wrist: preset.wrist,
+      wristRotation: preset.wristRotation,
       gripper: preset.gripper,
     });
   },

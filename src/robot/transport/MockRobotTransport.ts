@@ -22,11 +22,12 @@ export class MockRobotTransport implements RobotTransport {
   private disposed = false;
   private state: Record<JointName, number> = {
     base: 90,
-    shoulder: 110,
-    elbow: 95,
+    shoulder1: 0,
+    shoulder2: 180,
+    elbow: 180,
     wrist: 90,
-    gripper: 75,
-    shoulderB: 90,
+    wristRotation: 150,
+    gripper: 90,
   };
 
   constructor(private readonly events: TransportEvents) {}
@@ -92,9 +93,10 @@ function delay(ms: number): Promise<void> {
 
 export const MOCK_HOME: Record<JointName, number> = {
   base: JOINTS.base.home,
-  shoulder: JOINTS.shoulder.home,
+  shoulder1: JOINTS.shoulder1.home,
+  shoulder2: JOINTS.shoulder2.home,
   elbow: JOINTS.elbow.home,
   wrist: JOINTS.wrist.home,
+  wristRotation: JOINTS.wristRotation.home,
   gripper: JOINTS.gripper.home,
-  shoulderB: JOINTS.shoulderB.home,
 };

@@ -13,7 +13,7 @@ import { shapeAxis } from "./joystick";
 
 /** Which joint each joystick axis drives. */
 export const AXIS_MAP: Record<"A" | "B", { x: JointName; y: JointName }> = {
-  A: { x: "base", y: "shoulder" },
+  A: { x: "base", y: "shoulder1" },
   B: { x: "elbow", y: "wrist" },
 };
 

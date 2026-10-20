@@ -52,11 +52,12 @@ export interface ControllerApi {
 /** The pose the controller is brought to when the motors are armed. */
 const HOME_POSE: JointAngles = {
   base: JOINTS.base.home,
-  shoulder: JOINTS.shoulder.home,
+  shoulder1: JOINTS.shoulder1.home,
+  shoulder2: JOINTS.shoulder2.home,
   elbow: JOINTS.elbow.home,
   wrist: JOINTS.wrist.home,
+  wristRotation: JOINTS.wristRotation.home,
   gripper: JOINTS.gripper.home,
-  shoulderB: JOINTS.shoulderB.home,
 };
 
 export function useRobotController(): ControllerApi {
@@ -465,7 +466,9 @@ export function useRobotController(): ControllerApi {
     if (transport) {
       try {
         await transport.write(encodeJointFrame(home));
-        state.setConnection({ lastMessage: `Armed — home pose sent (${home.base},${home.shoulder},${home.elbow},${home.wrist},${home.gripper})` });
+        state.setConnection({
+          lastMessage: `Armed — home pose sent (${JOINT_NAMES.map((j) => Math.round(home[j])).join(",")})`,
+        });
       } catch {
         state.setConnection({ error: "Could not write to the controller." });
       }

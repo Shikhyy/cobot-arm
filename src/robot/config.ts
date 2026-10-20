@@ -23,12 +23,21 @@
  */
 export const JOINT_NAMES = [
   "base",
-  "shoulder",
+  "shoulder1",
+  "shoulder2",
   "elbow",
   "wrist",
+  "wristRotation",
   "gripper",
-  "shoulderB",
 ] as const;
+
+/**
+ * The servo channels, in the order the sketch attaches them.
+ *
+ * The prototype has seven servos for six axes: the shoulder is driven by a
+ * PAIR of servos mounted on opposite sides of the arm's tail. They turn the
+ * opposite way to each other, so the app mirrors one onto the other.
+ */
 export type JointName = (typeof JOINT_NAMES)[number];
 
 export interface JointSpec {
@@ -36,12 +45,12 @@ export interface JointSpec {
   label: string;
   /** Which physical joint this is, for the docs panel. */
   description: string;
-  /** Arduino pin driving the servo (from the shipped firmware). */
+  /** Arduino pin driving the servo. */
   pin: number;
-  /** Servo travel, in degrees, as written in the firmware. */
+  /** Servo travel, in degrees. */
   min: number;
   max: number;
-  /** Neutral / rest angle used by presets that need one. */
+  /** Neutral / rest angle used by the presets that need one. */
   home: number;
   /** Maximum commanded angular velocity, degrees per second. */
   maxRate: number;
@@ -59,13 +68,16 @@ export interface JointSpec {
   mirroredBy?: JointName;
   /** Set on a channel that has no user-facing control of its own. */
   hidden?: boolean;
+  /** For a linear end effector: the angle that opens it, and the one that closes it. */
+  openAngle?: number;
+  closeAngle?: number;
 }
 
 export const JOINTS: Record<JointName, JointSpec> = {
   base: {
     label: "Base",
-    description: "Turntable yaw. Rotates the whole column about the vertical axis.",
-    pin: 3,
+    description: "Yaw of the whole machine about the vertical column.",
+    pin: 13,
     min: 0,
     max: 180,
     home: 90,
@@ -73,68 +85,87 @@ export const JOINTS: Record<JointName, JointSpec> = {
     inverted: false,
     requiresCalibration: true,
   },
-  shoulder: {
+  shoulder1: {
     label: "Shoulder",
-    description: "Pitch of the upper arm link. Carries the whole arm mass.",
-    pin: 5,
-    min: 20,
-    max: 160,
-    home: 110,
+    description: "Pitch of the upper arm, driven by a mirrored pair of servos.",
+    pin: 9,
+    min: 0,
+    max: 180,
+    home: 0,
     maxRate: 90,
     inverted: false,
     requiresCalibration: true,
-    mirroredBy: "shoulderB",
+    mirroredBy: "shoulder2",
+  },
+  shoulder2: {
+    label: "Shoulder (mirrored)",
+    description: "Second shoulder servo, on the far side of the arm's tail.",
+    pin: 10,
+    min: 0,
+    max: 180,
+    home: 180,
+    maxRate: 90,
+    inverted: false,
+    requiresCalibration: true,
+    mirrorOf: "shoulder1",
+    hidden: true,
   },
   elbow: {
     label: "Elbow",
-    description: "Pitch of the forearm link at the end of the upper arm.",
-    pin: 6,
-    min: 20,
-    max: 160,
-    home: 95,
+    description: "Pitch of the forearm at the end of the upper arm.",
+    pin: 5,
+    min: 0,
+    max: 180,
+    home: 180,
     maxRate: 90,
     inverted: false,
     requiresCalibration: true,
   },
   wrist: {
     label: "Wrist",
-    description: "Final pitch that sets the soldering angle of the held board.",
-    pin: 9,
+    description: "Pitch of the tool. Sets the soldering angle of the held board.",
+    pin: 6,
     min: 0,
     max: 180,
     home: 90,
-    maxRate: 120,
-    inverted: false,
-    requiresCalibration: true,
-  },
-  shoulderB: {
-    label: "Shoulder (mirrored)",
-    description: "Second shoulder servo, mounted on the far side of the arm's tail.",
-    pin: 11,
-    min: 40,
-    max: 180,
-    home: 90,
     maxRate: 90,
     inverted: false,
     requiresCalibration: true,
-    mirrorOf: "shoulder",
-    hidden: true,
+  },
+  wristRotation: {
+    label: "Wrist rotation",
+    description: "Roll of the tool about the forearm axis. Turns the board in the fingers.",
+    pin: 7,
+    min: 0,
+    max: 180,
+    home: 150,
+    maxRate: 90,
+    inverted: false,
+    requiresCalibration: true,
   },
   gripper: {
     label: "Gripper",
-    description: "Two-finger end effector. Larger angle = more open.",
-    pin: 10,
-    min: 30,
-    max: 120,
-    home: 75,
-    maxRate: 90,
+    description: "Two-finger end effector. 0° is open, 180° is closed.",
+    pin: 11,
+    min: 0,
+    max: 180,
+    home: 90,
+    maxRate: 60,
     inverted: false,
     requiresCalibration: false,
+    openAngle: 0,
+    closeAngle: 180,
   },
 };
 
-/** The axes the operator steers, in the order they appear in the panels. */
-export const JOINT_ORDER: JointName[] = ["base", "shoulder", "elbow", "wrist", "gripper"];
+export const JOINT_ORDER: JointName[] = [
+  "base",
+  "shoulder1",
+  "elbow",
+  "wrist",
+  "wristRotation",
+  "gripper",
+];
 
 /**
  * The angle a mirrored channel has to be given so that it turns the opposite
@@ -176,9 +207,11 @@ export const CONTROL_TICK_MS = 40;
 /** Neutral preset poses. Angles are *samples*, not a measured calibration. */
 export interface Pose {
   base: number;
-  shoulder: number;
+  shoulder1: number;
+  shoulder2: number;
   elbow: number;
   wrist: number;
+  wristRotation: number;
   gripper: number;
 }
 
@@ -195,10 +228,12 @@ export const BUILTIN_PRESETS: Preset[] = [
     name: "Home",
     note: "Neutral rest pose. Sample angles — re-calibrate before trusting it.",
     base: 90,
-    shoulder: 110,
-    elbow: 95,
+    shoulder1: 0,
+    shoulder2: 180,
+    elbow: 180,
     wrist: 90,
-    gripper: 75,
+    wristRotation: 150,
+    gripper: 90,
     builtin: true,
   },
   {
@@ -206,10 +241,12 @@ export const BUILTIN_PRESETS: Preset[] = [
     name: "PCB Pickup",
     note: "Reaches down and forward towards the work tray. Sample angles.",
     base: 90,
-    shoulder: 145,
-    elbow: 55,
-    wrist: 110,
-    gripper: 115,
+    shoulder1: 25,
+    shoulder2: 155,
+    elbow: 140,
+    wrist: 100,
+    wristRotation: 150,
+    gripper: 20,
     builtin: true,
   },
   {
@@ -217,10 +254,12 @@ export const BUILTIN_PRESETS: Preset[] = [
     name: "Soldering Position 1",
     note: "Steep angle for through-hole work on the near edge of the board.",
     base: 90,
-    shoulder: 125,
-    elbow: 70,
-    wrist: 60,
-    gripper: 70,
+    shoulder1: 20,
+    shoulder2: 160,
+    elbow: 130,
+    wrist: 80,
+    wristRotation: 150,
+    gripper: 30,
     builtin: true,
   },
   {
@@ -228,10 +267,12 @@ export const BUILTIN_PRESETS: Preset[] = [
     name: "Soldering Position 2",
     note: "Shallow angle for surface-mount work along the board edge.",
     base: 90,
-    shoulder: 100,
-    elbow: 85,
-    wrist: 125,
-    gripper: 70,
+    shoulder1: 12,
+    shoulder2: 168,
+    elbow: 150,
+    wrist: 110,
+    wristRotation: 150,
+    gripper: 30,
     builtin: true,
   },
   {
@@ -239,10 +280,12 @@ export const BUILTIN_PRESETS: Preset[] = [
     name: "Inspection",
     note: "Raises the board to eye level for checking the joint before soldering.",
     base: 90,
-    shoulder: 65,
-    elbow: 40,
-    wrist: 100,
-    gripper: 90,
+    shoulder1: 5,
+    shoulder2: 175,
+    elbow: 165,
+    wrist: 120,
+    wristRotation: 150,
+    gripper: 60,
     builtin: true,
   },
 ];
