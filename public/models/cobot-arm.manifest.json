@@ -1,0 +1,373 @@
+{
+  "unit": "mm",
+  "parts": [
+    {
+      "name": "Alt_Govde",
+      "label": "Rotating base drum",
+      "group": "turret",
+      "triangles": 7288,
+      "bounds": [
+        [
+          -60.0,
+          -59.99,
+          -10.0
+        ],
+        [
+          60.0,
+          59.99,
+          50.0
+        ]
+      ]
+    },
+    {
+      "name": "Alt_Kapak",
+      "label": "Turret deck",
+      "group": "turret",
+      "triangles": 10616,
+      "bounds": [
+        [
+          -56.8,
+          -56.8,
+          0.0
+        ],
+        [
+          146.8,
+          56.8,
+          44.5
+        ]
+      ]
+    },
+    {
+      "name": "Alt_Kasa",
+      "label": "Controller enclosure",
+      "group": "base",
+      "triangles": 12278,
+      "bounds": [
+        [
+          -150.0,
+          -60.0,
+          0.0
+        ],
+        [
+          59.99,
+          60.0,
+          70.0
+        ]
+      ]
+    },
+    {
+      "name": "Alt_Kol",
+      "label": "Upper arm link",
+      "group": "upperArm",
+      "triangles": 4120,
+      "bounds": [
+        [
+          -27.5,
+          -15.0,
+          -127.49
+        ],
+        [
+          67.497,
+          15.0,
+          114.277
+        ]
+      ]
+    },
+    {
+      "name": "Bilek",
+      "label": "Wrist housing",
+      "group": "wrist",
+      "triangles": 2018,
+      "bounds": [
+        [
+          -21.5,
+          -20.0,
+          -12.5
+        ],
+        [
+          21.5,
+          20.0,
+          12.5
+        ]
+      ]
+    },
+    {
+      "name": "Disli",
+      "label": "Drive gear",
+      "group": "gripper",
+      "triangles": 1096,
+      "bounds": [
+        [
+          -8.476,
+          -8.363,
+          -0.0
+        ],
+        [
+          6.25,
+          8.5,
+          5.0
+        ]
+      ]
+    },
+    {
+      "name": "El",
+      "label": "Elbow servo plate",
+      "group": "forearm",
+      "triangles": 1012,
+      "bounds": [
+        [
+          -25.0,
+          -24.142,
+          0.0
+        ],
+        [
+          25.0,
+          24.142,
+          3.0
+        ]
+      ]
+    },
+    {
+      "name": "El_Ust",
+      "label": "Elbow servo cover",
+      "group": "forearm",
+      "triangles": 1472,
+      "bounds": [
+        [
+          -25.0,
+          -24.142,
+          0.0
+        ],
+        [
+          25.0,
+          24.142,
+          15.0
+        ]
+      ]
+    },
+    {
+      "name": "Jack_Cover",
+      "label": "Power jack cover",
+      "group": "base",
+      "triangles": 978,
+      "bounds": [
+        [
+          0.0,
+          -6.91,
+          -0.0
+        ],
+        [
+          25.0,
+          9.71,
+          12.0
+        ]
+      ]
+    },
+    {
+      "name": "Mil_1",
+      "label": "Shoulder axle",
+      "group": "turret",
+      "triangles": 560,
+      "bounds": [
+        [
+          -4.9,
+          -4.89,
+          0.0
+        ],
+        [
+          4.9,
+          4.89,
+          39.75
+        ]
+      ]
+    },
+    {
+      "name": "Mil_2",
+      "label": "Wrist axle",
+      "group": "forearm",
+      "triangles": 236,
+      "bounds": [
+        [
+          -3.4,
+          -3.39,
+          0.0
+        ],
+        [
+          3.4,
+          3.39,
+          28.0
+        ]
+      ]
+    },
+    {
+      "name": "Mil_3",
+      "label": "Yaw column",
+      "group": "turret",
+      "triangles": 554,
+      "bounds": [
+        [
+          -8.5,
+          -8.498,
+          0.0
+        ],
+        [
+          8.5,
+          8.498,
+          71.8
+        ]
+      ]
+    },
+    {
+      "name": "Mil_Disli",
+      "label": "Mil_Disli",
+      "group": "base",
+      "triangles": 2260,
+      "bounds": [
+        [
+          -20.13,
+          -19.971,
+          -0.0
+        ],
+        [
+          20.13,
+          20.16,
+          10.0
+        ]
+      ]
+    },
+    {
+      "name": "On_Kol",
+      "label": "Forearm link",
+      "group": "forearm",
+      "triangles": 6240,
+      "bounds": [
+        [
+          -152.5,
+          -28.0,
+          -20.0
+        ],
+        [
+          20.0,
+          28.0,
+          20.0
+        ]
+      ]
+    },
+    {
+      "name": "Parmak_X_2",
+      "label": "Gripper finger carriage",
+      "group": "gripper",
+      "triangles": 716,
+      "bounds": [
+        [
+          -4.99,
+          -5.0,
+          -6.0
+        ],
+        [
+          25.0,
+          5.0,
+          6.0
+        ]
+      ]
+    },
+    {
+      "name": "Parmak_2_X_2",
+      "label": "Gripper finger pad",
+      "group": "gripper",
+      "triangles": 440,
+      "bounds": [
+        [
+          -4.99,
+          -5.0,
+          0.0
+        ],
+        [
+          54.87,
+          21.213,
+          5.0
+        ]
+      ]
+    },
+    {
+      "name": "Parmak_Disli_X_2",
+      "label": "Finger rack gear",
+      "group": "gripper",
+      "triangles": 1616,
+      "bounds": [
+        [
+          -8.979,
+          -8.979,
+          -6.0
+        ],
+        [
+          25.0,
+          8.979,
+          6.0
+        ]
+      ]
+    },
+    {
+      "name": "Servo_Cable_Holder",
+      "label": "Servo cable clamp",
+      "group": "upperArm",
+      "triangles": 596,
+      "bounds": [
+        [
+          -23.25,
+          -8.0,
+          -2.0
+        ],
+        [
+          23.25,
+          8.0,
+          31.5
+        ]
+      ]
+    },
+    {
+      "name": "Servo_Disli",
+      "label": "Elbow servo horn",
+      "group": "forearm",
+      "triangles": 2692,
+      "bounds": [
+        [
+          -20.13,
+          -19.971,
+          -0.0
+        ],
+        [
+          20.13,
+          20.16,
+          10.0
+        ]
+      ]
+    },
+    {
+      "name": "Tabla_Alt",
+      "label": "Base plate",
+      "group": "base",
+      "triangles": 3304,
+      "bounds": [
+        [
+          -56.85,
+          -56.85,
+          0.0
+        ],
+        [
+          56.85,
+          56.85,
+          10.0
+        ]
+      ]
+    }
+  ],
+  "triangles": 60092,
+  "vertices": 29902,
+  "materials": {
+    "printed": "#b53322",
+    "printed_dark": "#7c2417",
+    "metal": "#9aa1ab",
+    "gear": "#2b2e34"
+  }
+}
