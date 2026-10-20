@@ -72,7 +72,7 @@ export const PIVOTS = {
    * end. The pivot therefore sits 27.5 mm above that face and 19.8 mm
    * forward of the turret axis, so the tail lands square on the bracket.
    */
-  shoulder: [19.8, 172, 0] as [number, number, number],
+  shoulder: [19.8, 158, 0] as [number, number, number],
   /** Elbow: 200 mm up the upper arm, offset 47.5 mm forward. */
   elbow: [47.5, 194.27, 0] as [number, number, number],
   /** Wrist: 140 mm out along the forearm. */
@@ -104,11 +104,13 @@ export const REST_POSE: Record<string, number> = {
    * the prototype. Any lean here would lift the tail off its bracket and the
    * joint would read as floating.
    */
-  shoulder: 0,
+  shoulder1: 0,
+  shoulder2: 0,
   /* The elbow carries the pose: the forearm reaches forward and down. */
-  elbow: -55,
+  elbow: 0,
   /* And the wrist folds the tool down so the blades hang over the board. */
-  wrist: -20,
+  wrist: 0,
+  wristRotation: 0,
   gripper: 0,
 };
 
@@ -189,7 +191,7 @@ export const PARTS: PartPlacement[] = [
     label: "Shoulder axle",
     group: "turret",
     // Runs across the whole tail, through both shoulder servos.
-    position: [19.8, 172, -34],
+    position: [19.8, 158, -34],
     rotation: [0, 0, 0],
     material: "metal",
     explode: [0, 0, -60],
@@ -369,7 +371,7 @@ export const SERVOS: ServoPlacement[] = [
     id: "servo-shoulder-a",
     label: "Shoulder servo (near side)",
     group: "turret",
-    position: [19.8, 172, -38],
+    position: [19.8, 158, -38],
     axis: "z",
     size: [40, 40, 20],
     color: "servo",
@@ -379,7 +381,7 @@ export const SERVOS: ServoPlacement[] = [
     id: "servo-shoulder-b",
     label: "Shoulder servo (far side)",
     group: "turret",
-    position: [19.8, 172, 38],
+    position: [19.8, 158, 38],
     axis: "z",
     size: [40, 40, 20],
     color: "servo",

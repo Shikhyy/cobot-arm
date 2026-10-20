@@ -16,6 +16,7 @@ import {
 } from "./assembly";
 import { JOINTS, type JointName } from "../robot/config";
 import { useRobotStore } from "../robot/store";
+import { toolAnchor } from "./framing";
 
 /* ------------------------------------------------------------------ */
 /* Joint mapping                                                        */
@@ -38,12 +39,13 @@ const MODEL_URL = `${import.meta.env.BASE_URL}models/cobot-arm.glb`;
 
 const JOINT_MAP: Record<JointName, { scale: number; sign: number }> = {
   base: { scale: 1, sign: 1 },
-  shoulder: { scale: 1, sign: -1 },
+  /* The two shoulder servos drive one axis; the model follows the first. */
+  shoulder1: { scale: 1, sign: -1 },
+  shoulder2: { scale: 1, sign: -1 },
   elbow: { scale: 1, sign: 1 },
   wrist: { scale: 1, sign: 1 },
+  wristRotation: { scale: 1, sign: 1 },
   gripper: { scale: 0, sign: 1 },
-  /* The mirrored shoulder servo drives the same axis as its twin. */
-  shoulderB: { scale: 1, sign: -1 },
 };
 
 export interface RobotModelProps {
@@ -67,6 +69,7 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
   const shoulderRef = useRef<Group>(null);
   const elbowRef = useRef<Group>(null);
   const wristRef = useRef<Group>(null);
+  const wristRollRef = useRef<Group>(null);
   const gripperRef = useRef<Group>(null);
 
   const partRefs = useRef(new Map<string, Group>());
@@ -213,24 +216,29 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
     };
 
     applyJoint(turretRef, "base", "y");
-    applyJoint(shoulderRef, "shoulder", "z");
+    applyJoint(shoulderRef, "shoulder1", "z");
     applyJoint(elbowRef, "elbow", "z");
     applyJoint(wristRef, "wrist", "z");
+    applyJoint(wristRollRef, "wristRotation", "x");
 
-    /* --- gripper: servo angle opens a pair of blades --- */
+    /* --- gripper: servo angle opens a pair of blades ---
+       The end effector is linear and runs the other way round to the other
+       axes: 0° is open, 180° is closed. */
     const grip = gripperRef.current;
     if (grip) {
       const spec = JOINTS.gripper;
       const t = THREE.MathUtils.clamp((angles.gripper - spec.min) / (spec.max - spec.min), 0, 1);
       /* The two blades pivot on a common pin, so the servo angle opens a
          V rather than sliding two carriages apart. */
-      const half = THREE.MathUtils.degToRad(THREE.MathUtils.lerp(3, 24, t));
+      const half = THREE.MathUtils.degToRad(THREE.MathUtils.lerp(24, 3, t));
       grip.children.forEach((child) => {
         const finger = child as Group;
         const side = finger.userData.side;
         if (side === 1) finger.rotation.y = -half;
         if (side === -1) finger.rotation.y = half;
       });
+      /* Tell the camera where the tool is, so it can keep the arm in frame. */
+      grip.getWorldPosition(toolAnchor);
     }
 
     /* --- exploded view --- */
@@ -288,7 +296,7 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
 
           {/* J2 — shoulder */}
           <group ref={shoulderRef} position={PIVOTS.shoulder}>
-            {showReadouts && showLabels ? <JointReadout joint="shoulder" position={[0, 0, 0]} /> : null}
+            {showReadouts && showLabels ? <JointReadout joint="shoulder1" position={[0, 0, 0]} /> : null}
             {PARTS.filter((p) => p.group === "upperArm").map((part) => (
               <PartNode
                 key={part.name}
@@ -300,7 +308,7 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
 
             {/* J3 — elbow */}
             <group ref={elbowRef} position={PIVOTS.elbow}>
-              {showReadouts && showLabels ? <JointReadout joint="elbow" position={[0, 0, 0]} /> : null}
+              {showReadouts && showLabels ? <JointReadout joint="elbow" position={[-40, 34, 0]} /> : null}
               {PARTS.filter((p) => p.group === "forearm").map((part) => (
                 <PartNode
                   key={part.name}
@@ -315,20 +323,27 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
 
               {/* J4 — wrist */}
               <group ref={wristRef} position={PIVOTS.wrist}>
-                {showReadouts && showLabels ? <JointReadout joint="wrist" position={[0, 0, 0]} /> : null}
-                {PARTS.filter((p) => p.group === "wrist").map((part) => (
-                  <PartNode
-                    key={part.name}
-                    part={part}
-                    node={nodes.get(part.name)}
-                    register={(group) => partRefs.current.set(part.name, group)}
-                  />
-                ))}
+                {showReadouts && showLabels ? <JointReadout joint="wrist" position={[-72, 0, 0]} /> : null}
 
-                {/* J5 — gripper */}
+                {/* J5 — wrist roll: the palm and the fingers turn about the
+                    forearm axis, which is the sixth axis of the machine. */}
+                <group ref={wristRollRef} position={PIVOTS.gripper}>
+                  {showReadouts && showLabels ? (
+                    <JointReadout joint="wristRotation" position={[0, 32, 0]} />
+                  ) : null}
+                  {PARTS.filter((p) => p.group === "wrist").map((part) => (
+                    <PartNode
+                      key={part.name}
+                      part={part}
+                      node={nodes.get(part.name)}
+                      register={(group) => partRefs.current.set(part.name, group)}
+                    />
+                  ))}
+
+                {/* J6 — gripper */}
                 <group ref={gripperRef} position={PIVOTS.gripper}>
                   {showReadouts && showLabels ? (
-                    <JointReadout joint="gripper" position={[0, 34, 0]} />
+                    <JointReadout joint="gripper" position={[0, -32, 0]} />
                   ) : null}
                   {PARTS.filter(
                     (p) => p.group === "gripper" && p.name === "Parmak_Disli_X_2",
@@ -350,6 +365,7 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
                     carriage={mirrorNodes.get("Parmak_X_2")}
                     pad={mirrorNodes.get("Parmak_2_X_2")}
                   />
+                </group>
                 </group>
               </group>
             </group>
