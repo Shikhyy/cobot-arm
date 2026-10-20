@@ -37,8 +37,8 @@ export function ControlPage() {
   const connection = useRobotStore((state) => state.connection);
 
   return (
-    <div className="flex min-h-[100svh] flex-col bg-ink-950">
-      <header className="sticky top-0 z-40 border-b border-ink-800 bg-ink-950/92 backdrop-blur-xl">
+    <div className="flex min-h-[100svh] flex-col bg-ink-950 lg:h-[100svh] lg:overflow-hidden">
+      <header className="sticky top-0 z-40 shrink-0 border-b border-ink-800 bg-ink-950/92 backdrop-blur-xl">
         <div className="mx-auto flex h-[var(--nav-h)] w-full max-w-[1680px] items-center gap-4 px-4 sm:px-6">
           <Link
             to="/"
@@ -62,18 +62,28 @@ export function ControlPage() {
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[1680px] flex-1 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mx-auto flex w-full max-w-[1680px] flex-1 flex-col px-4 py-4 sm:px-6 sm:py-6 lg:min-h-0">
         <RobotStatus />
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.95fr)] xl:grid-cols-[minmax(0,1.7fr)_minmax(400px,0.9fr)]">
+        {/*
+          The layout is an operator console.
+
+          The viewport is pinned: on a narrow screen it sticks under the header
+          while the panels scroll past it, and on a wide screen the right-hand
+          column becomes its own scroll region. Either way the machine is
+          never scrolled out of sight, and the wheel over the 3D view zooms
+          the camera instead of moving the page.
+        */}
+        <div className="mt-4 flex flex-1 flex-col gap-4 lg:min-h-0 lg:grid lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.95fr)] xl:grid-cols-[minmax(0,1.7fr)_minmax(400px,0.9fr)]">
           {/* ── viewport ── */}
-          <section className="flex flex-col gap-3">
-            <div className="panel relative overflow-hidden">
-              <div className="h-[clamp(320px,52vh,720px)] w-full">
+          <section className="sticky top-[var(--nav-h)] z-20 flex flex-col gap-3 lg:static lg:z-auto lg:min-h-0">
+            <div className="panel relative overflow-hidden overscroll-contain lg:min-h-0 lg:flex-1">
+              <div className="h-[clamp(340px,52vh,780px)] w-full lg:h-full">
                 <RobotViewport
                   home={{ position: [7.3, 4.35, 9.1], target: [0.4, 2.3, 0], fov: 34 }}
                   resetSignal={resetSignal}
                   view={view}
+                  autoFrame={view === "full"}
                 >
                   <RobotModel showReadouts />
                 </RobotViewport>
@@ -109,14 +119,14 @@ export function ControlPage() {
               </div>
             </div>
 
-            <p className="flex items-center gap-2 text-[11px] text-mist-500">
+            <p className="hidden items-center gap-2 text-[11px] text-mist-500 lg:flex">
               <Move3d size={12} aria-hidden />
               Drag to orbit · scroll to zoom · the view shows the commanded pose, not a measured one.
             </p>
           </section>
 
-          {/* ── controls ── */}
-          <section className="flex flex-col gap-4">
+          {/* ── controls: the only part of the page that scrolls ── */}
+          <section className="flex flex-col gap-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pb-6 lg:pr-1">
             <div className="sm:hidden">
               <StopButton controller={controller} />
             </div>
