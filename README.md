@@ -227,6 +227,26 @@ check them.
 | 4 | Every joint range is **verified** | “Arm the motors” stays greyed out |
 | 5 | The motors are **armed** | The numbers move, the arm does not |
 
+### The bring-up order — do it in this order
+
+The app cannot tell you where the arm physically is, so the first contact with
+the real machine is a bench exercise, not a test of the app. The steps below
+are ordered so that a mistake can only ever be a small one.
+
+| # | Step | What to watch for |
+| --- | --- | --- |
+| 1 | Flash **v2** and leave the servo supply **off** | The original sketch has the wrong pin map and the wrong frame |
+| 2 | Connect over USB, wait for `READY`, then try the **simulator** first | The interface works before the hardware is involved |
+| 3 | **Pose the arm by hand at the home pose** — base 90°, shoulder 0°/180°, elbow 180°, wrist 90°, wrist roll 150°, gripper open | The firmware attaches the servos at the home angle on the first frame, so anything else is a snap |
+| 4 | Power the servos from the limited supply, **arm unloaded**, and nudge **one axis at a time** with the ±2° buttons | Watch the real arm against the 3D view; use **INV** if an axis runs the wrong way |
+| 5 | Walk each axis to its mechanical stop and record it with **Min** / **Max**, then **Verify** | This is what stops the arm driving into its own frame |
+| 6 | Check the **shoulder pair** on its own, at a low supply voltage | The two sides are commanded as exact opposites; if they are not geared to each other, they will fight |
+| 7 | Only then use the **sticks**, with a finger on **STOP MOTION** | |
+| 8 | Only then put a board in the gripper | |
+
+A browser button is not an emergency stop. Keep a physical power cut within
+reach for the first run.
+
 ### 1. Wire the power
 
 ```
