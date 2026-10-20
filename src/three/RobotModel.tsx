@@ -28,6 +28,14 @@ import { useRobotStore } from "../robot/store";
  * direction. Both are assumptions: the real direction of every axis depends on
  * how the arm was assembled and is established with the Calibration workflow.
  */
+/**
+ * The browser model.
+ *
+ * The path is built from the Vite base so it also resolves when the site is
+ * served from a sub-path such as GitHub Pages' /<repo>/.
+ */
+const MODEL_URL = `${import.meta.env.BASE_URL}models/cobot-arm.glb`;
+
 const JOINT_MAP: Record<JointName, { scale: number; sign: number }> = {
   base: { scale: 1, sign: 1 },
   shoulder: { scale: 1, sign: -1 },
@@ -49,7 +57,7 @@ export interface RobotModelProps {
  * control loop can update the pose at 25 Hz without reconciling the scene.
  */
 export function RobotModel({ showReadouts = false }: RobotModelProps) {
-  const gltf = useGLTF("/models/cobot-arm.glb");
+  const gltf = useGLTF(MODEL_URL);
   const selectedPart = useRobotStore((state) => state.selectedPart);
   const showLabels = useRobotStore((state) => state.showLabels);
 
@@ -498,4 +506,4 @@ function JointReadout({
   );
 }
 
-useGLTF.preload("/models/cobot-arm.glb");
+useGLTF.preload(MODEL_URL);
