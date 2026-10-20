@@ -28,26 +28,26 @@ export interface Shot {
 export const SHOTS: Shot[] = [
   {
     name: "hero",
-    position: [6.4, 4.0, 7.6],
-    target: [0.65, 2.1, 0],
+    position: [6.4, 4.2, 7.6],
+    target: [0.6, 2.2, 0],
     fov: 34,
   },
   {
     name: "anatomy",
-    position: [5.5, 3.6, 6.5],
-    target: [0.9, 2.4, 0],
+    position: [5.5, 3.8, 6.5],
+    target: [0.8, 2.6, 0],
     fov: 32,
   },
   {
     name: "joints",
-    position: [3.9, 4.5, 4.7],
-    target: [1.25, 3.35, 0],
+    position: [3.9, 4.8, 4.7],
+    target: [1.0, 3.7, 0],
     fov: 30,
   },
   {
     name: "links",
-    position: [-4.5, 2.6, 5.6],
-    target: [0.6, 2.6, 0],
+    position: [-4.5, 2.9, 5.6],
+    target: [0.6, 2.9, 0],
     fov: 33,
   },
   {
@@ -58,8 +58,8 @@ export const SHOTS: Shot[] = [
   },
   {
     name: "outro",
-    position: [7.6, 4.1, -6.6],
-    target: [0.7, 2.0, 0],
+    position: [7.6, 4.3, -6.6],
+    target: [0.7, 2.3, 0],
     fov: 33,
   },
 ];
@@ -77,8 +77,8 @@ export const SHOTS: Shot[] = [
 export const VIEWS: Record<string, Shot> = {
   full: {
     name: "Full",
-    position: [5.6, 3.5, 6.3],
-    target: [0.7, 1.9, 0],
+    position: [5.6, 3.7, 6.3],
+    target: [0.6, 2.05, 0],
     fov: 34,
   },
   base: {
@@ -89,26 +89,26 @@ export const VIEWS: Record<string, Shot> = {
   },
   head: {
     name: "Head",
-    position: [1.3, 4.0, 2.4],
-    target: [1.85, 3.45, 0],
+    position: [1.3, 4.35, 2.4],
+    target: [1.9, 3.8, 0],
     fov: 32,
   },
   arm: {
     name: "Arm",
-    position: [3.5, 3.0, 3.7],
-    target: [0.45, 2.5, 0],
+    position: [3.5, 3.3, 3.7],
+    target: [0.45, 2.85, 0],
     fov: 34,
   },
   gripper: {
     name: "Gripper",
-    position: [3.0, 3.9, 1.7],
-    target: [2.05, 3.5, 0],
+    position: [3.0, 4.25, 1.7],
+    target: [2.05, 3.85, 0],
     fov: 30,
   },
   "gripper-axis": {
     name: "End-on",
-    position: [3.5, 3.6, 0.12],
-    target: [2.05, 3.5, 0],
+    position: [3.5, 3.95, 0.12],
+    target: [2.05, 3.85, 0],
     fov: 36,
   },
 };

@@ -108,11 +108,17 @@ Measured from the STLs, not guessed:
 * `Alt_Govde`'s bracket occupies CAD x −18 … 58, y ±29 and rises from z 20 to 50.
 * `Alt_Kol` ends in a 55 × 30 mm tail whose Ø10 bore is 27.5 mm from the end.
 
-So the shoulder pivot sits **19.8 mm forward of the turret axis and 27.5 mm
-above the bracket's top face** — that is the only position where the tail
-lands square on the bracket instead of hanging off it. The tail drops into the
-bracket's slot, and **two full-size servos are bolted to the base on either
-side of it**, flanking the tail and driving the pair.
+So the shoulder pivot sits **19.8 mm forward of the turret axis and 192 mm
+above the desk**: the bracket's top face is at 164.5 mm (the drum is placed
+at 114.5 mm with its CAD *z* turned into world *y*, and the bracket tops out
+at CAD *z* = 50), and the tail's bore is 27.5 mm from the end of the link, so
+`164.5 + 27.5 = 192` is the only height at which the tail lands square on
+the bracket instead of hanging off it or sinking into the drum.
+
+At that height the 55 mm tail spans x −7.7 … 47.3, which sits squarely on
+the 76 mm bracket. **Two full-size servos are bolted to the base on either
+side of the tail**, flanking it and driving the pair, with their outputs on
+the axle that runs through both of them.
 
 The two servos turn the opposite way to each other, so the app mirrors one onto
 the other: `shoulder2 = 180 − shoulder1`, exactly as the machine runs it. The
@@ -162,9 +168,10 @@ lighter grid — so the machine reads the same way in both.
   machine is bolted down in, so the rest offsets in `REST_POSE`
   (`src/three/assembly.ts`) are zero. The servo angles that produce it are the
   real ones — base 90°, shoulder 0° / 180°, elbow 180°, wrist 90°, wrist roll
-  150° — so the model at home shows the near-vertical L of the export. If the
-  machine on the bench looks different, the Calibration panel's **Zero here**
-  lines the model up with it.
+  150° — so the model at home shows the near-vertical L of the export, with
+  the arm's tail lying on the base's bracket. If the machine on the bench
+  looks different, the Calibration panel's **Zero here** lines the model up
+  with it.
 * The **gripper** is modelled the way the photograph shows it: the wrist folds the
   tool down over the work area, and a pair of thin printed blades pivots on a
   common pin and opens into a V. The lower blade is turned over so that its

@@ -66,14 +66,32 @@ export const PIVOTS = {
   /**
    * Shoulder: the arm's tail lies flat on the turret bracket.
    *
-   * Measured from the CAD: `Alt_Govde` carries a raised bracket whose top
-   * face is 30 mm wide and offset towards +X (CAD x -18 .. 58), and
-   * `Alt_Kol` ends in a 55 x 30 mm tail with its bore 27.5 mm from the
-   * end. The pivot therefore sits 27.5 mm above that face and 19.8 mm
-   * forward of the turret axis, so the tail lands square on the bracket.
+   * Measured from the CAD, not guessed:
+   *
+   *   • `Alt_Govde` carries a raised bracket whose top face is at CAD
+   *     z = 50 and which spans CAD x -18 .. 58. The drum is placed at
+   *     y = 114.5 with its CAD z turned into world y, so the bracket's
+   *     top face is at **164.5 mm** above the desk.
+   *   • `Alt_Kol` ends in a 55 x 30 mm tail whose Ø10 bore is 27.5 mm
+   *     from the end (`measure_bores.py`: the bore is at CAD z = -100 and
+   *     the link ends at z = -127.5).
+   *
+   * So the shoulder axis has to sit 27.5 mm above the bracket's top face
+   * for the tail to land square on it: **164.5 + 27.5 = 192 mm**. It also
+   * sits 19.8 mm forward of the turret axis, which puts the 55 mm tail
+   * (x -7.7 .. 47.3) squarely on the 76 mm bracket.
+   *
+   * The shoulder's home angle is therefore zero, and at zero the tail
+   * lies on the base.
    */
-  shoulder: [19.8, 158, 0] as [number, number, number],
-  /** Elbow: 200 mm up the upper arm, offset 47.5 mm forward. */
+  shoulder: [19.8, 192, 0] as [number, number, number],
+  /**
+   * Elbow: 200 mm up the upper arm, offset 47.5 mm forward.
+   *
+   * `measure_bores.py` puts the link's second Ø10 bore at CAD
+   * (47.5, 94.27), which is 194.27 mm along the link and 47.5 mm
+   * forward of the shoulder axis — 200 mm from bore to bore.
+   */
   elbow: [47.5, 194.27, 0] as [number, number, number],
   /** Wrist: 140 mm out along the forearm. */
   wrist: [140, 0, 0] as [number, number, number],
@@ -191,7 +209,7 @@ export const PARTS: PartPlacement[] = [
     label: "Shoulder axle",
     group: "turret",
     // Runs across the whole tail, through both shoulder servos.
-    position: [19.8, 158, -34],
+    position: [19.8, 192, -34],
     rotation: [0, 0, 0],
     material: "metal",
     explode: [0, 0, -60],
@@ -371,7 +389,7 @@ export const SERVOS: ServoPlacement[] = [
     id: "servo-shoulder-a",
     label: "Shoulder servo (near side)",
     group: "turret",
-    position: [19.8, 158, -38],
+    position: [19.8, 192, -38],
     axis: "z",
     size: [40, 40, 20],
     color: "servo",
@@ -381,7 +399,7 @@ export const SERVOS: ServoPlacement[] = [
     id: "servo-shoulder-b",
     label: "Shoulder servo (far side)",
     group: "turret",
-    position: [19.8, 158, 38],
+    position: [19.8, 192, 38],
     axis: "z",
     size: [40, 40, 20],
     color: "servo",

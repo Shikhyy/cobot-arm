@@ -12,7 +12,7 @@ import * as THREE from "three";
  */
 
 /** The tool's world position, updated by the robot rig each frame. */
-export const toolAnchor = new THREE.Vector3(2.07, 3.52, 0);
+export const toolAnchor = new THREE.Vector3(2.07, 3.86, 0);
 
 /** The machine's own centre of mass on the desk — the yaw column. */
 export const baseAnchor = new THREE.Vector3(0, 0.62, 0);
