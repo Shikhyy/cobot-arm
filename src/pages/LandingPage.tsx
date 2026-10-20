@@ -210,7 +210,7 @@ export function LandingPage() {
                 className="mt-14 grid max-w-[520px] grid-cols-2 gap-x-6 gap-y-5 border-t border-ink-800 pt-7 sm:grid-cols-4"
               >
                 {[
-                  ["Axes", "5 DOF"],
+                  ["Axes", "6 DOF"],
                   ["Structure", "Printed"],
                   ["Control", "Arduino + USB"],
                   ["Feedback", "Commanded only"],
@@ -259,7 +259,7 @@ export function LandingPage() {
                 </p>
                 <p className="mt-4 max-w-[46ch] text-[15px] leading-[1.8] text-mist-400">
                   This robot is not a soldering machine. It is the fixture that a soldering machine
-                  would need — a small, printed, five-axis arm that grips the board and holds the
+                  would need — a small, printed, six-axis arm that grips the board and holds the
                   angle you asked for.
                 </p>
               </div>
@@ -575,7 +575,7 @@ export function LandingPage() {
                 COBOT <span className="text-mist-500">/</span> PCB FIXTURE
               </p>
               <p className="mt-3 max-w-[52ch] text-[12.5px] leading-relaxed text-mist-500">
-                A five-axis printed fixture for holding PCBs at a workable angle while a person
+                A six-axis printed fixture for holding PCBs at a workable angle while a person
                 solders. Built, modelled and documented in the open.
               </p>
             </div>

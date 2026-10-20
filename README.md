@@ -1,12 +1,13 @@
 # COBOT / PCB FIXTURE
 
 **Cobot-Assisted PCB Soldering Fixture** — a cinematic 3D landing page and a live,
-browser-based joystick controller for a five-axis, 3D-printed robotic arm that holds
+browser-based joystick controller for a six-axis, 3D-printed robotic arm that holds
 a PCB at a workable angle while a person solders it.
 
 The 3D model on the site is **not an illustration**: it is the project's own CAD
 export — the twenty printed parts in `Robotic+Arm+with+Servo+&+Arduino/` — welded,
-optimised and assembled into five working axes with real joint pivots.
+optimised and assembled into six working axes with real joint pivots. The machine
+has **seven servos**: the shoulder is driven by a mirrored pair.
 
 ---
 
@@ -23,7 +24,7 @@ Other commands:
 npm run build        # type-check + production bundle into dist/
 npm run preview      # serve the production build locally
 npm run typecheck    # TypeScript only
-npm run verify       # check the wire format and the control maths (27 checks)
+npm run verify       # check the wire format and the control maths (38 checks)
 ```
 
 The **Live Control** dashboard lives at `/control`. It needs a Chromium browser
@@ -81,8 +82,9 @@ itself** by slicing each part and locating its through-holes
 | `Alt_Kapak` | Ø40 bore, four screws on a Ø100 circle | the base plate and its socket |
 
 From that: **base (static) → turret (yaw) → upper arm (shoulder) → forearm
-(elbow) → wrist → gripper**, with every pitch axis parallel to the world Z axis
-and the yaw axis vertical.
+(elbow) → wrist → wrist roll → gripper**, with every pitch axis parallel to the
+world Z axis, the yaw axis vertical and the wrist roll about the forearm's own
+axis. That is six axes, driven by seven servos.
 
 ### The base, from the reference photograph
 
@@ -108,14 +110,19 @@ Measured from the STLs, not guessed:
 
 So the shoulder pivot sits **19.8 mm forward of the turret axis and 27.5 mm
 above the bracket's top face** — that is the only position where the tail
-lands square on the bracket instead of hanging off it. The micro servo is
-bolted to the back of that tail and drives a printed horn on the front, exactly
-as the photograph shows.
+lands square on the bracket instead of hanging off it. The tail drops into the
+bracket's slot, and **two full-size servos are bolted to the base on either
+side of it**, flanking the tail and driving the pair.
+
+The two servos turn the opposite way to each other, so the app mirrors one onto
+the other: `shoulder2 = 180 − shoulder1`, exactly as the machine runs it. The
+firmware checks the pair on every frame and answers `ERR,SHOULDER-PAIR` if they
+are out of step.
 
 **The shoulder's rest angle is therefore zero.** That is the angle at which
-the arm is bolted down. All of the pose lives in the elbow and the wrist
-instead, because any lean at the shoulder would lift the tail off its bracket
-and make the joint read as floating.
+the arm is bolted down, and it is the shoulder's home servo angle (D9 = 0°,
+D10 = 180°). Any lean at the shoulder would lift the tail off its bracket and
+make the joint read as floating.
 
 `src/three/assembly.ts` is the single place where all of this lives. If the
 original assembly file turns up, that one file is all that has to change.
@@ -130,9 +137,13 @@ lighter grid — so the machine reads the same way in both.
 
 ### Honest caveats
 
-* The **rest pose** was re-authored so the machine reads as a cobot rather than
-  the near-vertical L the parts happen to be modelled in
-  (`REST_POSE` in `src/three/assembly.ts`). The Home preset reproduces it exactly.
+* The **home pose** follows the CAD: the parts are modelled in the pose the
+  machine is bolted down in, so the rest offsets in `REST_POSE`
+  (`src/three/assembly.ts`) are zero. The servo angles that produce it are the
+  real ones — base 90°, shoulder 0° / 180°, elbow 180°, wrist 90°, wrist roll
+  150° — so the model at home shows the near-vertical L of the export. If the
+  machine on the bench looks different, the Calibration panel's **Zero here**
+  lines the model up with it.
 * The **gripper** is modelled the way the photograph shows it: the wrist folds the
   tool down over the work area, and a pair of thin printed blades pivots on a
   common pin and opens into a V. The lower blade is turned over so that its
@@ -149,8 +160,10 @@ lighter grid — so the machine reads the same way in both.
   enclosure's Ø110 collar. The upper arm's tail lands on the drum so the
   shoulder reads as bolted to the base.
 * The hobby servos, screws and wiring are **not** in the CAD export, so they
-  are modelled procedurally as standard 40 × 20 mm servos plus the micro servo
-  at the head, as the photograph shows.
+  are modelled procedurally as standard 40 × 20 mm servos, as the photograph
+  shows: the base yaw servo sits **inside** the enclosure, and the pair of
+  shoulder servos sits **on the base**, either side of the arm's tail, with
+  their outputs on the shoulder axle that runs through both of them.
 * Every angle the UI shows is a **commanded** angle. These servos have no
   position feedback, so nothing in this app can tell you where the arm
   physically is.
@@ -159,14 +172,29 @@ lighter grid — so the machine reads the same way in both.
 
 ## 4. Flashing the firmware
 
-The app works with the **original** `arm_controller.ino` unchanged. Flash
-`firmware/arm_controller_v2.ino` if you also want the stop verb, the gripper
-verbs, the state report and the watchdog.
+Flash **`firmware/arm_controller_v2.ino`**. It is the sketch that speaks the
+app's seven-channel frame, and it adds the stop verb, the gripper verbs, the
+state report and the watchdog.
+
+The original `arm_controller.ino` is kept in the repository untouched, for
+reference. It speaks the older five-channel frame on a different pin map, so
+it does **not** drive this machine and the app's frames will not parse on it.
 
 1. Install the Arduino IDE (2.x).
 2. Open `firmware/arm_controller_v2.ino`.
 3. **Check the wiring table at the top of the sketch** against your machine and
-   edit `PINS`, `MIN_ANGLE` and `MAX_ANGLE` if they differ.
+   edit `PINS`, `MIN_ANGLE` and `MAX_ANGLE` if they differ. The shipped values
+   are the real machine's:
+
+   ```
+   base.attach(13);
+   shoulder1.attach(9);
+   shoulder2.attach(10);
+   elbow.attach(5);
+   wrist.attach(6);
+   wristRotation.attach(7);
+   gripper.attach(11);
+   ```
 4. Board: **Arduino Uno**, Processor: **ATmega328P (old bootloader)** if your
    board has one.
 5. Upload.
@@ -176,7 +204,7 @@ The controller answers `READY` on the serial monitor at 115200 baud, 8N1.
 ### Powering the servos
 
 * **Never** power the servos from the Arduino's 5 V pin. Use a separate 5–6 V
-  supply rated for the stall current of all five servos.
+  supply rated for the stall current of all seven servos.
 * Join the supply's **GND** to the Arduino's GND. Without a common ground the
   serial link drops as soon as a servo stalls.
 * Do not hot-plug the servos.
@@ -205,10 +233,10 @@ check them.
 Arduino 5V  ─────────────┐
 Arduino GND ───┬─────────┼── supply GND
                │         │
-             servo 1..5  └── supply +5..6V   (rated for all five, stalling)
+             servo 1..7  └── supply +5..6V   (rated for all seven, stalling)
 ```
 
-The Arduino's 5 V pin cannot supply five servos. Without a common ground the
+The Arduino's 5 V pin cannot supply seven servos. Without a common ground the
 serial link also drops under load, which looks exactly like a browser bug.
 Never hot-plug the servos.
 
@@ -258,7 +286,7 @@ Open **Calibration** in the right-hand column.
    press **Zero here**. This is what lines the model up with the real arm —
    a servo's mechanical centre is rarely at 90°.
 
-Repeat for all five joints. Until every joint is verified, the motors stay
+Repeat for all six axes. Until every axis is verified, the motors stay
 disarmed.
 
 ### 5. Arm and drive
@@ -286,7 +314,7 @@ disarmed.
 | No `READY`, traffic counter stuck at 0 | Wrong port, a charge-only USB cable, the IDE still holds the port, or the sketch is not running. Try the simulator to prove the interface itself is fine. |
 | The board keeps dropping out mid-move | The servo supply is sagging. Separate supply, shared ground. |
 | A joint moves the wrong axis | Your wiring order differs from the firmware's pin map. Either re-order `PINS` in the sketch, or swap the two entries for that joint in `src/robot/config.ts`. |
-| The arm twists instead of turning | The shoulder pair is out of step — check the far-side servo (D11) is actually on the arm's tail and is not loose. `ERR,SHOULDER-PAIR` in the traffic log says so. |
+| The arm twists instead of turning | The shoulder pair is out of step — check the far-side servo (D10) is actually on the arm's tail and is not loose. `ERR,SHOULDER-PAIR` in the traffic log says so. |
 | A joint runs backwards | Press **INV** for it in Calibration. |
 | The arm jumps on the first move | The original firmware snaps the servos to the first angle. Flash v2, which ramps from home. |
 | The arm reaches a stop and keeps pushing | The limit was never recorded. Re-run the calibration for that joint. |
@@ -305,7 +333,8 @@ and never claims to be the real arm.
 One command per line, LF terminated, 115200 baud 8N1.
 
 ```
-A,<base>,<shoulder>,<elbow>,<wrist>,<gripper>   set all five targets
+A,<base>,<shoulder1>,<shoulder2>,<elbow>,<wrist>,<wristRot>,<gripper>
+                                                set all seven targets
 G,OPEN | G,CLOSE                                gripper verbs        (v2)
 S,0                                             stop / hold         (v2)
 HOME                                            home pose           (v2)
@@ -313,7 +342,28 @@ P                                               ping                (v2)
 T                                               report the targets  (v2)
 ```
 
-Replies: `READY`, `PONG`, `T,b,s,e,w,g`, `OK,…`, `ERR,…`.
+Replies: `READY`, `PONG`, `T,b,s1,s2,e,w,wr,g`, `OK,…`, `ERR,…`.
+
+The channel order is the order the sketch attaches the servos, so the frame and
+the wiring can never drift apart:
+
+| # | Channel | Arduino pin | Home | Range | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | `base` | D13 | 90° | 0–180 | yaw of the whole machine |
+| 2 | `shoulder1` | D9 | 0° | 0–180 | the pair's reference servo |
+| 3 | `shoulder2` | D10 | 180° | 0–180 | mirrored: `180 − shoulder1` |
+| 4 | `elbow` | D5 | 180° | 0–180 | travels towards 0° |
+| 5 | `wrist` | D6 | 90° | 0–180 | pitch of the tool |
+| 6 | `wristRotation` | D7 | 150° | 0–180 | roll about the forearm axis |
+| 7 | `gripper` | D11 | 90° | 0–180 | **0° open, 180° closed** |
+
+The gripper is the one axis that runs the other way round to the others: it is
+a linear end effector, so 0° is fully open and 180° is fully closed.
+
+The shoulder pair is mirrored in the app itself (`mirrorAngle` in
+`src/robot/config.ts`), so no path through the UI can desynchronise the two
+sides. The firmware re-checks the pair on every frame and refuses to drive a
+frame whose two shoulder angles do not agree.
 
 ### The arming contract
 
@@ -323,9 +373,9 @@ whenever the commanded angles change, plus a 1 Hz keepalive so the firmware
 watchdog stays happy. Unplugging the board, pressing STOP, or reloading the
 page all disarm the app; nothing is ever replayed on reconnect.
 
-The app **only depends on the `A,…` frame**, so the original firmware works
-unchanged. `src/robot/protocol.ts` and `firmware/arm_controller_v2.ino` are the
-two halves of the contract and are kept in step with each other.
+`src/robot/protocol.ts` and `firmware/arm_controller_v2.ino` are the two halves
+of the contract and are kept in step with each other. `npm run verify` checks
+that the frame the app writes is the frame the sketch parses.
 
 ---
 
@@ -357,8 +407,11 @@ The servos are attached straight onto the commanded angle. Whatever pose the
 arm was physically in, the first slider move **snaps** it to that angle — at
 full speed, with no ramp. `arm_controller_v2.ino` now attaches the servos at
 the **home** pose and lets the normal 3°/20 ms ramp walk the arm there, so
-the first move is slow, bounded and predictable. With v1 still flashed, send
-the **Home** pose as your first command and keep the arm unloaded.
+the first move is slow, bounded and predictable.
+
+The original sketch is also the wrong pin map for this machine — it drives five
+servos on D3, D5, D6, D9 and D10, where the prototype has seven on D13, D9,
+D10, D5, D6, D7 and D11. Flash v2 before plugging anything in.
 
 ### The other fixes
 
@@ -382,7 +435,7 @@ the **Home** pose as your first command and keep the arm unloaded.
    mechanical stop. Record it with **Min** / **Max**, then press **Verify**.
 4. Put the link where the model shows its rest pose and press **Zero here** to
    align that joint.
-5. Repeat for all five, then tick **Arm the motors**.
+5. Repeat for all six axes, then tick **Arm the motors**.
 
 ### What is verified automatically
 
@@ -391,7 +444,7 @@ the chain that do not need a robot: the wire format against the firmware's
 `sscanf`, the line splitter across partial reads, the rate limiting and
 clamping, that a released stick holds the pose instead of returning home, the
 dead zone, the sensitivity, the axis inversion and the per-joint rate cap
-against the firmware's 150°/s ramp. 27 checks.
+against the firmware's 150°/s ramp. 38 checks.
 
 ### What only the bench can answer
 
@@ -420,6 +473,7 @@ src/
     RobotViewport.tsx  canvas, camera rig, orbit controls, loading + error states
     Stage.tsx       studio lighting, procedural environment, ground
     director.ts     scroll-driven camera shots and the inspection views
+    framing.ts      where the tool is, so the camera can keep the arm in shot
   motion/           GSAP + Lenis (the only smooth-scroll engine on the site)
   components/       Navigation · VirtualJoystick · ConnectionPanel · JointControls …
   pages/            LandingPage · ControlPage
@@ -445,6 +499,11 @@ Two rules hold the design together:
   scroll-driven camera; the page renders its final state immediately.
 * The stop control is present at every scroll position on the dashboard, and
   the joysticks are operable from the keyboard with the arrow keys.
+* The dashboard is an operator console: the 3D viewport is **pinned**, so the
+  machine never scrolls out of sight, and the wheel over the canvas zooms the
+  camera instead of moving the page. The camera also re-frames itself as the
+  arm moves — it keeps the base and the tool in shot without ever pushing in
+  past the zoom the operator chose.
 
 ---
 
@@ -452,8 +511,13 @@ Two rules hold the design together:
 
 * The joint **limits and directions are the shipped firmware's defaults**,
   not a calibration of any particular machine. Calibrate before use.
-* Which servo channel drives which joint is taken from the firmware's pin map
-  and has not been verified against the physical wiring.
+* The channel order and the pin map come from the machine's own sketch, but
+  the *directions* of every axis are still an assumption — a servo's zero is
+  rarely where the drawing says it is. The Calibration workflow is what turns
+  those assumptions into facts.
+* The **shoulder pair's** limits are the reflection of each other. If one of
+  the two servos is mechanically short of the other, the mirrored pair will
+  fight itself near the ends of the travel.
 * The mass, balance and safe working envelope of the arm are unknown.
 * The browser's connection status reflects the **serial link**, not the health
   of the machine: it cannot tell you that a servo is stalled.

@@ -66,7 +66,7 @@ export function Explorer({ open, onClose }: { open: boolean; onClose: () => void
       <header className="flex h-[var(--nav-h)] shrink-0 items-center gap-4 border-b border-ink-800 px-5 sm:px-8">
         <span className="eyebrow">3D Explorer</span>
         <span className="hidden text-[12px] text-mist-500 sm:block">
-          Real CAD assembly · 20 printed parts · 5 axes
+          Real CAD assembly · 20 printed parts · 6 axes
         </span>
         <div className="ml-auto flex items-center gap-2">
           <button
