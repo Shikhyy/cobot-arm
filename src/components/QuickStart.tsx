@@ -33,7 +33,7 @@ export function QuickStart() {
             {[
               {
                 title: "Power the servos separately",
-                body: "Five servos on the Arduino's 5 V pin will brown the board out. Use a 5–6 V supply rated for all five, and join its GND to the Arduino GND. A board that browns out drops the USB link, and the app then holds the motion.",
+                body: "Seven servos on the Arduino's 5 V pin will brown the board out. Use a 5–6 V supply rated for all seven, and join its GND to the Arduino GND. A board that browns out drops the USB link, and the app then holds the motion.",
               },
               {
                 title: "Close the IDE's serial monitor",

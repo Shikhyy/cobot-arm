@@ -253,7 +253,7 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
             <Zap size={13} className="mt-px shrink-0" aria-hidden />
             <span>
               <strong className="font-medium">Servo power.</strong> Run the servos from a separate
-              5–6 V supply rated for all five, and join its GND to the Arduino GND. Powering them
+              5–6 V supply rated for all seven, and join its GND to the Arduino GND. Powering them
               from the board's 5 V pin browns the board out, the port drops and the arm goes dead.
             </span>
           </p>
