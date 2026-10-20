@@ -16,26 +16,27 @@
     S,0                       Stop: freeze the current position (v2 only)
     HOME                      Move to the home pose (v2 only)
     P                         Ping — the controller answers with PONG
-    T                         Report the current targets as T,b,s,e,w,g
+    T                         Report the current targets as T,b,s1,s2,e,w,wr,g
 
   Replies:
     READY,<n>                 printed once at boot; n = the channel count
     PONG                      answer to P
-    T,b,s,e,w,g               the current target angles
+    T,b,s1,s2,e,w,wr,g         the current target angles
     ERR,<code>                the last command was rejected
 
-  The original arm_controller.ino understands ONLY the A,... frame. This
-  sketch is a backwards compatible superset: if you flash v1 instead, the
-  web app still works, it just will not receive PONG / T / status replies and
-  the G, S and HOME commands are ignored.
+  FLASH THIS SKETCH, NOT arm_controller.ino. The original sketch speaks the
+  older five-channel frame on a different pin map, so the app's seven-value
+  frames land in the wrong joints and the wrong pins: the model would move
+  and the arm would not. This sketch announces its channel count as
+  READY,7, and the app reports a mismatch instead of hiding it.
 
   ────────────────────────────────────────────────────────────────────────────
   SAFETY
   ────────────────────────────────────────────────────────────────────────────
   • The servos have no position feedback. The app shows COMMANDED angles.
   • Never power the servos from the Arduino's 5 V pin. Use a separate 5-6 V
-    supply rated for the stall current of all five servos, and join its GND
-    to the Arduino GND, otherwise the serial link drops under load.
+    supply rated for the stall current of all seven servos, and join its
+    GND to the Arduino GND, otherwise the serial link drops under load.
   • The watchdog below only freezes the arm. It cannot switch the power off.
     Fit a real switch or a latching relay if you need an emergency stop.
   • If the link is lost the arm holds its last position. It does NOT home.
@@ -45,7 +46,7 @@
 #include <Servo.h>
 
 /*
- * Six servos, five articulated axes.
+ * Seven servos, six articulated axes.
  *
  * The shoulder is driven by a PAIR of servos mounted on opposite sides of
  * the arm's tail plate. They are mirrored mechanically: to move the arm one

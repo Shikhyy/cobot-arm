@@ -201,11 +201,50 @@ The original `arm_controller.ino` is kept in the repository untouched, for
 reference. It speaks the older five-channel frame on a different pin map, so
 it does **not** drive this machine and the app's frames will not parse on it.
 
-1. Install the Arduino IDE (2.x).
-2. Open `firmware/arm_controller_v2.ino`.
-3. **Check the wiring table at the top of the sketch** against your machine and
-   edit `PINS`, `MIN_ANGLE` and `MAX_ANGLE` if they differ. The shipped values
-   are the real machine's:
+### The wiring
+
+Seven servos, seven pins. The signal wire of each goes to the pin in this
+table; every servo also needs its red lead on the external supply and its
+brown/black lead on the shared ground.
+
+| Servo | Signal pin | Power | What it drives | Home |
+| --- | --- | --- | --- | --- |
+| base | **D13** | external 5–6 V | yaw of the whole machine, up into the drum | 90° |
+| shoulder 1 | **D9** | external 5–6 V | the near-side shoulder servo | 0° |
+| shoulder 2 | **D10** | external 5–6 V | the far-side shoulder servo, mirrored | 180° |
+| elbow | **D5** | external 5–6 V | pitch of the forearm | 180° |
+| wrist | **D6** | external 5–6 V | pitch of the tool | 90° |
+| wrist rotation | **D7** | external 5–6 V | roll of the tool about the forearm | 150° |
+| gripper | **D11** | external 5–6 V | the two-finger end effector | 90° (0 open / 180 closed) |
+
+```
+   Arduino UNO                          external servo supply
+   ┌──────────────┐                     ┌──────────────────────┐
+   │ D13 ─────────┼── base signal        │  +5..6 V  ──┬───────┼── every servo red
+   │ D9  ─────────┼── shoulder 1 signal  │             │       │
+   │ D10 ─────────┼── shoulder 2 signal  │             │       │
+   │ D5  ─────────┼── elbow signal       │  GND  ─────┴───────┼── every servo brown
+   │ D6  ─────────┼── wrist signal       └──────────────────────┘
+   │ D7  ─────────┼── wrist rotation          │
+   │ D11 ─────────┼── gripper signal           │
+   │ GND ─────────┼───────────────────────────┴── common ground, joined
+   │ USB ─────────┼── to the computer
+   └──────────────┘
+```
+
+**Never** power the servos from the Uno's 5 V pin. Seven servos on the
+board's regulator will brown the board out, the USB link drops, and the arm
+goes dead in the middle of a move. The common ground is not optional: without
+it the serial link collapses the moment a servo stalls.
+
+### Flashing
+
+1. Install the **Arduino IDE 2.x**.
+2. Plug the board in with the **servo supply off** (you only need USB to
+   flash; the servos are not attached yet anyway).
+3. **File → Open** `firmware/arm_controller_v2.ino`.
+4. Check the pin table at the top of the sketch against your machine. The
+   shipped values are the real machine's:
 
    ```
    base.attach(13);
@@ -216,13 +255,24 @@ it does **not** drive this machine and the app's frames will not parse on it.
    wristRotation.attach(7);
    gripper.attach(11);
    ```
-4. Board: **Arduino Uno**, Processor: **ATmega328P (old bootloader)** if your
-   board has one.
-5. Upload.
 
-The controller answers `READY,7` on the serial monitor at 115200 baud, 8N1 —
-the `7` is the number of servo channels it speaks, which is how the app
-knows it is talking to the right firmware.
+5. **Tools → Board → Arduino Uno**. If the upload fails with
+   `avrdude: stk500_recv(): programmer is not responding`, set
+   **Tools → Processor → ATmega328P (old bootloader)**.
+6. Click **Upload**. The sketch is about 9 KB — it fits on the Uno with room
+   to spare.
+7. Open **Tools → Serial Monitor**, set **115200 baud**, and press the
+   board's reset button. You should see:
+
+   ```
+   READY,7
+   ```
+
+   The `7` is the channel count. It is the protocol version, and it is how
+   the app knows it is talking to the right firmware. If you see a bare
+   `READY` with no number, the old sketch is still flashed.
+8. **Close the serial monitor.** The browser needs the port; the IDE and
+   the browser cannot hold it at the same time.
 
 ### Powering the servos
 
@@ -231,6 +281,9 @@ knows it is talking to the right firmware.
 * Join the supply's **GND** to the Arduino's GND. Without a common ground the
   serial link drops as soon as a servo stalls.
 * Do not hot-plug the servos.
+* Fit a real switch in the servo supply. The firmware's watchdog can freeze
+  the arm, but it cannot switch the power off — a browser button is not an
+  emergency stop.
 
 ---
 
@@ -285,10 +338,13 @@ Never hot-plug the servos.
 
 ### 2. Flash the firmware
 
-Flash `firmware/arm_controller_v2.ino` if you can. The original
-`arm_controller.ino` also works for the joint frames, but it **snaps** the
-servos onto the very first angle it is given, so your first slider move becomes
-a jump. v2 attaches the servos at the home pose and ramps there at 3°/20 ms.
+Flash `firmware/arm_controller_v2.ino`. The original `arm_controller.ino`
+does **not** work with this app: it parses the older five-channel frame on a
+different pin map, so the app's seven-value frames land in the wrong joints
+and drive the wrong pins — the model moves and the arm does not. v2 also
+avoids the original's **snap**, where the servos jump onto the very first
+angle they are given; v2 attaches them one at a time at the home pose and
+ramps there at 3°/20 ms.
 
 ```
 Arduino IDE → open firmware/arm_controller_v2.ino
@@ -338,11 +394,15 @@ disarmed.
 
 ### 5. Arm and drive
 
-1. **Arm the motors** in the Link panel. This sends the home pose and then
-   accepts motion.
+1. **Arm the motors** in the Link panel, or from the strip under the
+   viewport. This sends the home pose and then accepts motion. The strip
+   switches to **Live** — that is the app telling you the frames are going
+   out of the port.
 2. **Stick A** — horizontal drives the base (yaw), vertical drives the
    shoulder. **Stick B** — horizontal drives the elbow, vertical drives the
-   wrist.
+   wrist. There are two sticks and six axes, so the **wrist rotation** and
+   the **gripper** are on their own controls: a slider for the roll, and
+   **Open** / **Close** for the jaws.
 3. The sticks are **velocity** controls: they add to the commanded angle at a
    bounded rate. Release one and the arm stops where it is. It never snaps
    back to a previous or home pose.
