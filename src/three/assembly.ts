@@ -342,7 +342,7 @@ export interface ServoPlacement {
   axis: "x" | "y" | "z";
   /** Body size in millimetres (length along the shaft-perpendicular axis). */
   size: [number, number, number];
-  color: "dark" | "metal";
+  color: "dark" | "metal" | "servo";
   /** Mirror the body so the output boss points the other way. */
   flip?: boolean;
   explode: [number, number, number];
@@ -361,28 +361,30 @@ export const SERVOS: ServoPlacement[] = [
     explode: [-70, 0, 0],
   },
   {
-    /* The shoulder is driven by two servos on opposite sides of the arm's
-       tail, inside the clevis of the turret bracket — the arrangement the
-       prototype photograph shows. They turn the opposite way. */
+    /* The shoulder is driven by a PAIR of servos, one on each side of the
+       arm's tail, bolted to the BASE at the shoulder joint. They belong to
+       the turret, not the arm: the arm hangs off their two outputs, and the
+       two turn the opposite way. Their output shafts reach through the tail
+       plate, which is bored across for exactly that. */
     id: "servo-shoulder-a",
     label: "Shoulder servo (near side)",
-    group: "upperArm",
-    position: [0, 0, -22],
+    group: "turret",
+    position: [19.8, 172, -38],
     axis: "z",
-    size: [23, 25, 12],
-    color: "metal",
-    explode: [0, 0, -60],
+    size: [40, 40, 20],
+    color: "servo",
+    explode: [0, 0, -70],
   },
   {
     id: "servo-shoulder-b",
     label: "Shoulder servo (far side)",
-    group: "upperArm",
-    position: [0, 0, 22],
+    group: "turret",
+    position: [19.8, 172, 38],
     axis: "z",
-    size: [23, 25, 12],
-    color: "metal",
+    size: [40, 40, 20],
+    color: "servo",
     flip: true,
-    explode: [0, 0, 60],
+    explode: [0, 0, 70],
   },
   {
     id: "servo-elbow",

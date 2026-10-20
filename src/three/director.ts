@@ -73,8 +73,8 @@ export const SHOTS: Shot[] = [
 export const VIEWS: Record<string, Shot> = {
   full: {
     name: "Full",
-    position: [6.4, 4.0, 7.6],
-    target: [0.65, 2.1, 0],
+    position: [5.6, 3.7, 6.7],
+    target: [0.6, 2.0, 0],
     fov: 34,
   },
   base: {

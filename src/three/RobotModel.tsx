@@ -445,9 +445,10 @@ function ServoBody({ servo }: { servo: (typeof SERVOS)[number] }) {
           ? [0, Math.PI, 0]
           : [0, 0, 0];
 
-  const bodyColor = servo.color === "metal" ? "#8b929c" : "#1d1f24";
-  const bodyRough = servo.color === "metal" ? 0.3 : 0.55;
-  const bodyMetal = servo.color === "metal" ? 0.8 : 0.25;
+  const bodyColor =
+    servo.color === "metal" ? "#8b929c" : servo.color === "servo" ? "#343a43" : "#1d1f24";
+  const bodyRough = servo.color === "metal" ? 0.3 : servo.color === "servo" ? 0.5 : 0.55;
+  const bodyMetal = servo.color === "metal" ? 0.8 : servo.color === "servo" ? 0.14 : 0.22;
 
   return (
     <group position={servo.position} rotation={rotation}>
