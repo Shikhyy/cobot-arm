@@ -11,12 +11,14 @@ import {
   PIVOTS,
   REST_POSE,
   SERVOS,
+  SURFACE,
   type MaterialId,
   type PartPlacement,
 } from "./assembly";
 import { JOINTS, type JointName } from "../robot/config";
 import { useRobotStore } from "../robot/store";
 import { toolAnchor } from "./framing";
+import { applySurfaceDetail, facetGeometry } from "./surface";
 
 /* ------------------------------------------------------------------ */
 /* Joint mapping                                                        */
@@ -80,6 +82,10 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
    * `useGLTF` caches one scene per URL, and mounting a node with R3F's
    * `<primitive>` detaches it from its parent — so the parts are cloned once
    * and addressed through a name map instead of by tree traversal.
+   *
+   * The geometry is faceted on the way in: the exporter welds the CAD's
+   * vertices, which averages the normals and rounds off every chamfer and
+   * fillet. Splitting them again puts the hard edges back.
    */
   const nodes = useMemo(() => {
     const clone = gltf.scene.clone(true);
@@ -90,6 +96,7 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
       if (mesh.isMesh) {
         mesh.castShadow = true;
         mesh.receiveShadow = true;
+        mesh.geometry = facetGeometry(mesh.geometry);
       }
     });
     return map;
@@ -113,14 +120,19 @@ export function RobotModel({ showReadouts = false }: RobotModelProps) {
     const created = {} as Record<MaterialId, MeshStandardMaterial>;
     (Object.keys(MATERIALS) as MaterialId[]).forEach((id) => {
       const spec = MATERIALS[id];
-      created[id] = new THREE.MeshStandardMaterial({
+      const material = new THREE.MeshStandardMaterial({
         color: new THREE.Color(spec.color),
         roughness: spec.roughness,
         metalness: spec.metalness,
         emissive: new THREE.Color(spec.emissive ?? "#000000"),
         emissiveIntensity: spec.emissiveIntensity ?? 0,
-        envMapIntensity: 1.1,
+        envMapIntensity: spec.envMapIntensity ?? 1.1,
       });
+      /* The CAD has no texture maps, so the surface detail is painted on in
+         the shader: the layer lines a print leaves, a fine grain, and an
+         edge light that keeps the silhouette off the background. */
+      applySurfaceDetail(material, SURFACE[id]);
+      created[id] = material;
     });
     return created;
   }, []);

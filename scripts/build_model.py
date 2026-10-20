@@ -77,7 +77,13 @@ MATERIAL = {
 
 
 def clean(mesh):
-    """Weld duplicate vertices, drop degenerate faces, recompute smooth normals."""
+    """Weld duplicate vertices and drop degenerate faces.
+
+    The welded mesh is what trimesh wants, and it keeps the exported GLB
+    small. The normals are faceted in the browser instead (see
+    `facetGeometry` in src/three/RobotModel.tsx): splitting the vertices
+    here would triple the download for something the GPU can do for free.
+    """
     mesh = trimesh.Trimesh(vertices=mesh.vertices, faces=mesh.faces, process=True)
     mesh.merge_vertices()
     mesh.update_faces(mesh.nondegenerate_faces())

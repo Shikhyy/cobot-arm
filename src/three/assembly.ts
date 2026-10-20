@@ -414,24 +414,96 @@ export const SERVOS: ServoPlacement[] = [
 
 export const MATERIALS: Record<
   MaterialId,
-  { color: string; roughness: number; metalness: number; emissive?: string; emissiveIntensity?: number }
+  {
+    color: string;
+    roughness: number;
+    metalness: number;
+    emissive?: string;
+    emissiveIntensity?: number;
+    envMapIntensity?: number;
+  }
 > = {
   printed: {
     color: "#c4391f",
-    roughness: 0.46,
-    metalness: 0.05,
+    roughness: 0.52,
+    metalness: 0.04,
     emissive: "#220703",
-    emissiveIntensity: 0.45,
+    emissiveIntensity: 0.22,
+    envMapIntensity: 1.15,
   },
   printedDark: {
     color: "#7d2513",
-    roughness: 0.55,
-    metalness: 0.05,
+    roughness: 0.6,
+    metalness: 0.04,
     emissive: "#170402",
-    emissiveIntensity: 0.4,
+    emissiveIntensity: 0.18,
+    envMapIntensity: 1.05,
   },
-  metal: { color: "#aab1bb", roughness: 0.28, metalness: 0.9 },
-  gear: { color: "#2b2f36", roughness: 0.38, metalness: 0.3 },
+  metal: { color: "#aab1bb", roughness: 0.26, metalness: 0.92, envMapIntensity: 1.5 },
+  gear: { color: "#2b2f36", roughness: 0.36, metalness: 0.34, envMapIntensity: 1.25 },
+};
+
+/**
+ * How the surface detail is painted per material family.
+ *
+ * The printed parts get the full treatment: the layer lines a 3D print
+ * leaves behind, a fine grain over the top, and the darker valleys between
+ * the layers. The metal parts are machined rather than printed, so they get
+ * a tighter grain and a colder, stronger edge light.
+ *
+ * Layer height is in world units, and one unit is 100 mm on this model. The
+ * printed parts use a coarse band — a group of real 0.2 mm layers, so the
+ * print still reads when the whole machine is in shot — and the shader fades
+ * the bands out as they get finer than the pixel grid.
+ */
+export const SURFACE: Record<
+  MaterialId,
+  {
+    layerHeight: number;
+    bump: number;
+    cavity: number;
+    roughVariation: number;
+    grain: number;
+    rim: number;
+    rimColor: string;
+  }
+> = {
+  printed: {
+    layerHeight: 0.009,
+    bump: 0.07,
+    cavity: 0.05,
+    roughVariation: 0.07,
+    grain: 1.6,
+    rim: 0.08,
+    rimColor: "#ffb59a",
+  },
+  printedDark: {
+    layerHeight: 0.009,
+    bump: 0.08,
+    cavity: 0.06,
+    roughVariation: 0.07,
+    grain: 1.6,
+    rim: 0.11,
+    rimColor: "#ffd9c2",
+  },
+  metal: {
+    layerHeight: 0.005,
+    bump: 0.04,
+    cavity: 0.02,
+    roughVariation: 0.05,
+    grain: 3.2,
+    rim: 0.18,
+    rimColor: "#dbe6ff",
+  },
+  gear: {
+    layerHeight: 0.006,
+    bump: 0.05,
+    cavity: 0.03,
+    roughVariation: 0.05,
+    grain: 2.2,
+    rim: 0.13,
+    rimColor: "#cfe0ff",
+  },
 };
 
 /* ─────────────────────────── helpers ─────────────────────────── */

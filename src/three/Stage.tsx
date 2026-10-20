@@ -40,17 +40,17 @@ const DARK: Palette = {
   fogNear: 16,
   fogFar: 40,
   ambient: "#a8b3c7",
-  ambientIntensity: 0.8,
+  ambientIntensity: 0.66,
   ground: "#251009",
   bounce: "#ff7a55",
-  keyIntensity: 5.0,
-  rimIntensity: 3.1,
-  fillIntensity: 1.7,
-  pointIntensity: 42,
-  exposure: 1.6,
+  keyIntensity: 3.1,
+  rimIntensity: 2.1,
+  fillIntensity: 1.2,
+  pointIntensity: 13,
+  exposure: 0.95,
   gridCell: "#1c2029",
   gridSection: "#2b313d",
-  shadowOpacity: 0.45,
+  shadowOpacity: 0.5,
 };
 
 const LIGHT: Palette = {
@@ -59,17 +59,17 @@ const LIGHT: Palette = {
   fogNear: 18,
   fogFar: 46,
   ambient: "#ffffff",
-  ambientIntensity: 1.5,
+  ambientIntensity: 1.15,
   ground: "#c9cdd6",
   bounce: "#ffb59a",
-  keyIntensity: 3.4,
-  rimIntensity: 1.5,
-  fillIntensity: 1.1,
-  pointIntensity: 12,
-  exposure: 1.05,
+  keyIntensity: 2.4,
+  rimIntensity: 1.05,
+  fillIntensity: 0.9,
+  pointIntensity: 8,
+  exposure: 0.85,
   gridCell: "#d5d9e1",
   gridSection: "#bcc3cf",
-  shadowOpacity: 0.28,
+  shadowOpacity: 0.3,
 };
 
 /**
@@ -112,9 +112,14 @@ export function Stage({ showGrid = true }: { showGrid?: boolean }) {
         shadow-camera-bottom={-3}
       />
 
-      {/* cool rim from behind-left, so the silhouette reads on dark */}
+      {/* hard rim from behind-left, so the silhouette and every chamfer
+          read against the dark background */}
       <directionalLight position={[-6.4, 4.4, -5.6]} intensity={palette.rimIntensity} color="#9dbcff" />
-      {/* warm front-left fill */}
+      {/* a second, lower kicker from behind-right, which picks out the far
+          edge of the tail and the far side of the drum */}
+      <directionalLight position={[4.8, 2.1, -6.2]} intensity={palette.rimIntensity * 0.55} color="#c9d8ff" />
+      {/* warm front-left fill, which lifts the shadow side without
+          flattening the key */}
       <directionalLight position={[-4.5, 2.6, 6.4]} intensity={palette.fillIntensity} color="#ffd9c2" />
       {/* bounce, borrowed from the printed filament */}
       <directionalLight position={[-1.6, -3.2, 3.4]} intensity={1.1} color={palette.bounce} />
@@ -126,12 +131,22 @@ export function Stage({ showGrid = true }: { showGrid?: boolean }) {
         decay={2}
         color="#cfe0ff"
       />
+      {/* a close, low light that grazes the base and the underside of the
+          links, so the machine does not float */}
+      <pointLight
+        position={[2.6, 0.9, 3.2]}
+        intensity={palette.pointIntensity * 0.18}
+        distance={9}
+        decay={2}
+        color="#ffb59a"
+      />
 
       <Environment resolution={256} frames={1}>
         <Lightformer intensity={4} position={[0, 6, -8]} scale={[12, 6, 1]} color="#8ea6d6" />
-        <Lightformer intensity={2.8} position={[6, 2, 4]} scale={[4, 8, 1]} color="#fff1e2" />
-        <Lightformer intensity={2} position={[-6, 1, 2]} scale={[4, 6, 1]} color="#ff7a55" />
-        <Lightformer intensity={1.2} position={[0, -6, 0]} rotation-x={Math.PI / 2} scale={[10, 10, 1]} color="#1a1c22" />
+        <Lightformer intensity={3} position={[6, 2, 4]} scale={[4, 8, 1]} color="#fff1e2" />
+        <Lightformer intensity={2.4} position={[-6, 1, 2]} scale={[4, 6, 1]} color="#ff7a55" />
+        <Lightformer intensity={2} position={[0, -6, 0]} rotation-x={Math.PI / 2} scale={[10, 10, 1]} color="#1a1c22" />
+        <Lightformer intensity={0.35} position={[0, 9, 0]} rotation-x={Math.PI / 2} scale={[8, 8, 1]} color="#dce6ff" />
       </Environment>
 
       {showGrid ? <StageFloor palette={palette} /> : null}

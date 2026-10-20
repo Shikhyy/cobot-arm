@@ -127,6 +127,27 @@ make the joint read as floating.
 `src/three/assembly.ts` is the single place where all of this lives. If the
 original assembly file turns up, that one file is all that has to change.
 
+### How the CAD is shaded
+
+The model is the real export, and it has no texture maps: it came out of an
+STL, so every surface was one flat colour and the shape disappeared into the
+shading. Three things put the detail back:
+
+* **Faceted normals.** The exporter welds the CAD's vertices, which averages
+  the normals and rounds off every chamfer, fillet and hole edge. The rig
+  splits them again on load, so the hard edges the designer drew come back
+  and the small radii read as the band of facets a printed part really has.
+* **Procedural surface detail** (`src/three/surface.ts`). The printed parts
+  get the layer lines a 3D print leaves behind, a fine grain over the top,
+  and darker valleys between the layers — all projected in world space,
+  because there are no UVs to project along. The bands fade out as they get
+  finer than the pixel grid, so they never turn into moire.
+* **A studio lighting rig** (`src/three/Stage.tsx`): a warm key with a tight
+  shadow, a hard cool rim from behind-left, a low kicker from behind-right
+  that picks out the far edge of the tail, a warm front fill, a grazing light
+  at the base so the machine does not float, and a procedural environment for
+  the metal parts to reflect.
+
 ### Light and dark
 
 The site ships with both themes. The switch lives in the top bar of the landing
@@ -489,6 +510,7 @@ src/
     transport/      RobotTransport · WebSerialTransport · MockRobotTransport
   three/
     assembly.ts     the authored CAD assembly  ← edit this to re-pose the robot
+    surface.ts      procedural print detail: layer lines, grain, edge light
     RobotModel.tsx  the articulated rig
     RobotViewport.tsx  canvas, camera rig, orbit controls, loading + error states
     Stage.tsx       studio lighting, procedural environment, ground
@@ -515,6 +537,9 @@ Two rules hold the design together:
   that the scroll narrative drives, and the 3D Explorer opens its own.
 * The render loop pauses when the tab is hidden; device pixel ratio is capped
   at 1.75; the model is 60 k triangles in one draw call per material.
+* The surface detail is a shader patch on the standard material, not a set of
+  texture maps: the CAD ships with no UVs, and the detail is projected in
+  world space instead.
 * `prefers-reduced-motion` disables Lenis, the split-text reveals and the
   scroll-driven camera; the page renders its final state immediately.
 * The stop control is present at every scroll position on the dashboard, and

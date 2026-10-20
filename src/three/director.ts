@@ -69,43 +69,47 @@ export const SHOTS: Shot[] = [
  *
  * Used by the 3D Explorer and the control dashboard to jump the camera to a
  * subsystem without losing the orbit controls.
+ *
+ * The framings follow the machine's home pose: the base box sits on the
+ * desk, the drum turns at 1.1, the shoulder is at 1.58, the elbow at 3.52
+ * and the tool reaches forward to 2.07.
  */
 export const VIEWS: Record<string, Shot> = {
   full: {
     name: "Full",
-    position: [5.6, 3.7, 6.7],
-    target: [0.6, 2.0, 0],
+    position: [5.6, 3.5, 6.3],
+    target: [0.7, 1.9, 0],
     fov: 34,
   },
   base: {
     name: "Base",
-    position: [5.9, 2.0, 4.4],
-    target: [0.1, 1.0, 0],
+    position: [3.3, 1.9, 3.5],
+    target: [0.0, 0.9, 0],
     fov: 34,
   },
   head: {
     name: "Head",
-    position: [2.9, 2.5, -3.1],
-    target: [0.2, 1.82, 0],
+    position: [1.3, 4.0, 2.4],
+    target: [1.85, 3.45, 0],
     fov: 32,
   },
   arm: {
     name: "Arm",
-    position: [3.1, 4.6, 4.4],
-    target: [0.75, 3.6, 0],
+    position: [3.5, 3.0, 3.7],
+    target: [0.45, 2.5, 0],
     fov: 34,
   },
   gripper: {
     name: "Gripper",
-    position: [2.6, 3.1, 1.5],
-    target: [1.45, 2.7, 0],
+    position: [3.0, 3.9, 1.7],
+    target: [2.05, 3.5, 0],
     fov: 30,
   },
   "gripper-axis": {
     name: "End-on",
-    position: [1.75, 2.15, 0.03],
-    target: [1.45, 2.7, 0],
-    fov: 40,
+    position: [3.5, 3.6, 0.12],
+    target: [2.05, 3.5, 0],
+    fov: 36,
   },
 };
 

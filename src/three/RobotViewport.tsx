@@ -301,10 +301,10 @@ function CameraRig({
       const aspect = perspective.aspect;
       const dir = offset.copy(desiredTarget).sub(desiredPosition).normalize();
       const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
-      if (aspect > 1.25) {
-        const shift = THREE.MathUtils.clamp((aspect - 1.15) / 1.1, 0, 1) * 2.1;
+      if (aspect > 1.1) {
+        const shift = THREE.MathUtils.clamp((aspect - 1.02) / 0.8, 0, 1) * 3.8;
         desiredTarget.addScaledVector(right, -shift);
-        const pullBack = THREE.MathUtils.clamp((aspect - 1.25) * 0.42, 0, 0.55);
+        const pullBack = THREE.MathUtils.clamp((aspect - 1.05) * 0.62, 0, 0.7);
         if (pullBack > 0.001) {
           desiredPosition.sub(desiredTarget).multiplyScalar(1 + pullBack).add(desiredTarget);
         }
