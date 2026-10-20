@@ -66,19 +66,14 @@ export function parseLine(raw: string): ParsedLine {
 
   if (line.startsWith("T,")) {
     const parts = line.split(",");
-    if (parts.length !== 6) return { kind: "unknown", raw };
+    if (parts.length !== JOINT_NAMES.length + 1) return { kind: "unknown", raw };
     const values = parts.slice(1).map((v) => Number(v));
     if (values.some((v) => !Number.isFinite(v))) return { kind: "unknown", raw };
-    return {
-      kind: "joints",
-      frame: {
-        base: values[0],
-        shoulder: values[1],
-        elbow: values[2],
-        wrist: values[3],
-        gripper: values[4],
-      },
-    };
+    const frame = {} as JointFrame;
+    JOINT_NAMES.forEach((joint, index) => {
+      frame[joint] = values[index];
+    });
+    return { kind: "joints", frame };
   }
 
   return { kind: "unknown", raw };

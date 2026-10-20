@@ -7,9 +7,10 @@
   ────────────────────────────────────────────────────────────────────────────
   The browser (see src/robot/protocol.ts) speaks exactly this.
 
-    A,<base>,<shoulder>,<elbow>,<wrist>,<gripper>
-        Set the target angle of all five joints, in degrees.
-        Example:  A,90,110,95,90,75
+    A,<base>,<shoulder>,<elbow>,<wrist>,<gripper>,<shoulderB>
+        Set the target angle of all six servos, in degrees.
+        The last value is the second shoulder servo, which is mirrored.
+        Example:  A,90,110,95,90,75,90
 
     G,OPEN | G,CLOSE          Open / close the gripper (v2 only)
     S,0                       Stop: freeze the current position (v2 only)
@@ -43,20 +44,35 @@
 
 #include <Servo.h>
 
-const uint8_t NUM_JOINTS = 5;
+/*
+ * Six servos, five articulated axes.
+ *
+ * The shoulder is driven by a PAIR of servos mounted on opposite sides of
+ * the arm's tail plate. They are mirrored mechanically: to move the arm one
+ * way, one servo has to turn the other way. The browser computes the mirrored
+ * angle and sends both, so the sketch can stay dumb — but the pair is checked
+ * here as well, because a servo that has come loose on one side would twist
+ * the arm instead of moving it.
+ */
+const uint8_t NUM_JOINTS = 6;
 
 // ── WIRING ───────────────────────────────────────────────────────────────────
-//                                  base shoulder elbow wrist gripper
-const uint8_t PINS[NUM_JOINTS] = {   3,     5,      6,    9,     10 };
+//                     base shoulder elbow wrist gripper shoulderB
+const uint8_t PINS[NUM_JOINTS] = {   3,     5,      6,    9,     10,       11 };
 
 // Hard limits enforced on the controller as well as in the app.
 // These match the values in src/robot/config.ts. ADJUST THEM to the real
-// machine before driving it with anything in the jaws.
-const int MIN_ANGLE[NUM_JOINTS]  = {   0,    20,     20,    0,     30 };
-const int MAX_ANGLE[NUM_JOINTS]  = { 180,   160,    160,  180,    120 };
+// machine before driving it with anything in the jaws. The mirrored
+// channel's limits are the reflection of the shoulder's.
+const int MIN_ANGLE[NUM_JOINTS]  = {   0,    20,     20,    0,     30,       40 };
+const int MAX_ANGLE[NUM_JOINTS]  = { 180,   160,    160,  180,    120,      180 };
 
 // Home pose (also the "HOME" command target).
-const int HOME_ANGLE[NUM_JOINTS] = {  90,   110,     95,   90,     75 };
+const int HOME_ANGLE[NUM_JOINTS] = {  90,   110,     95,   90,     75,       90 };
+
+// Index of the shoulder pair.
+const uint8_t SHOULDER_A = 1;
+const uint8_t SHOULDER_B = 5;
 
 // Gripper travel used by G,OPEN / G,CLOSE.
 const int GRIPPER_OPEN  = 120;
@@ -121,6 +137,18 @@ uint8_t parseJointList(char *payload, int *out) {
   return count;
 }
 
+/*
+ * The two shoulder servos have to agree about where the arm is. The browser
+ * sends the mirrored pair, so a large disagreement means a servo has been
+ * knocked loose or a channel is wired to the wrong pin.
+ */
+bool shoulderPairConsistent(void) {
+  int expected = HOME_ANGLE[SHOULDER_B] + (HOME_ANGLE[SHOULDER_A] - target[SHOULDER_A]);
+  int error = target[SHOULDER_B] - expected;
+  if (error < 0) error = -error;
+  return error <= 6;
+}
+
 void reportState() {
   Serial.print('T');
   for (uint8_t i = 0; i < NUM_JOINTS; i++) {
@@ -148,6 +176,9 @@ void applyTargets(const int *values) {
     }
     attached = true;
     Serial.println("OK,ATTACHED");
+  }
+  if (!shoulderPairConsistent()) {
+    Serial.println("ERR,SHOULDER-PAIR");
   }
   frozen = false;
   lastCommandAt = millis();

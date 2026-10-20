@@ -19,8 +19,8 @@ import {
   LineBuffer,
   parseLine,
 } from "../src/robot/protocol.ts";
-import { integrateJoystick, posesDiffer } from "../src/robot/motion.ts";
-import { JOINTS, JOINT_NAMES } from "../src/robot/config.ts";
+import { integrateJoystick, mirrorInto, posesDiffer } from "../src/robot/motion.ts";
+import { JOINTS, JOINT_NAMES, mirrorAngle } from "../src/robot/config.ts";
 
 let failures = 0;
 let checks = 0;
@@ -49,24 +49,85 @@ const HOME = Object.fromEntries(JOINT_NAMES.map((j) => [j, JOINTS[j].home])) as 
   number
 >;
 
+const LIMITS_FULL = Object.fromEntries(
+  JOINT_NAMES.map((j) => [j, { min: JOINTS[j].min, max: JOINTS[j].max, calibrated: true }]),
+) as Record<(typeof JOINT_NAMES)[number], { min: number; max: number; calibrated: boolean }>;
+
 /* ── 1. the wire format ─────────────────────────────────────────────── */
 console.log("\n1. Wire format (must match arm_controller.ino)");
 {
-  const frame = encodeJointFrame({ base: 90, shoulder: 110, elbow: 95, wrist: 90, gripper: 75 });
-  check("frame is A,b,s,e,w,g + LF", frame === "A,90,110,95,90,75\n", JSON.stringify(frame));
+  const frame = encodeJointFrame({
+    base: 90,
+    shoulder: 110,
+    elbow: 95,
+    wrist: 90,
+    gripper: 75,
+    shoulderB: 90,
+  });
+  check("frame is A,b,s,e,w,g,sB + LF", frame === "A,90,110,95,90,75,90\n", JSON.stringify(frame));
 
-  // The shipped firmware parses this with sscanf(s + 2, "%d,%d,%d,%d,%d").
+  // The firmware parses this with sscanf(s + 2, "%d,%d,%d,%d,%d,%d").
   const payload = frame.trim().slice(2);
   const values = payload.split(",").map(Number);
   check(
-    "sscanf would read exactly 5 integers",
-    values.length === 5 && values.every((v) => Number.isInteger(v)),
+    "sscanf would read exactly 6 integers",
+    values.length === 6 && values.every((v) => Number.isInteger(v)),
   );
-  check("channel order is base, shoulder, elbow, wrist, gripper", values.join(",") === "90,110,95,90,75");
+  check(
+    "channel order is base, shoulder, elbow, wrist, gripper, shoulderB",
+    values.join(",") === "90,110,95,90,75,90",
+  );
 
   check("stop verb is S,0", encodeStop() === "S,0\n");
   check("gripper verb is G,OPEN", encodeGripper("OPEN") === "G,OPEN\n");
   check("gripper verb is G,CLOSE", encodeGripper("CLOSE") === "G,CLOSE\n");
+}
+
+/* ── 1b. the mirrored shoulder pair ────────────────────────────────────── */
+console.log("\n1b. The mirrored shoulder pair");
+{
+  check("the shoulder has a twin", JOINTS.shoulder.mirroredBy === "shoulderB");
+  check("the twin knows what it mirrors", JOINTS.shoulderB.mirrorOf === "shoulder");
+  check("the twin is a different pin", JOINTS.shoulderB.pin !== JOINTS.shoulder.pin);
+
+  // The two servos sit on opposite sides of the arm, so one turns the other
+  // way: the mirrored angle is the reflection about the pair's centre.
+  check(
+    "at the home angle the twin is at its own home",
+    mirrorAngle("shoulder", JOINTS.shoulder.home) === JOINTS.shoulderB.home,
+  );
+  check(
+    "ten degrees on the shoulder is ten degrees the other way on the twin",
+    mirrorAngle("shoulder", JOINTS.shoulder.home + 10) === JOINTS.shoulderB.home - 10,
+  );
+  check(
+    "the mirrored angle stays inside the twin's travel",
+    mirrorAngle("shoulder", JOINTS.shoulder.min) <= JOINTS.shoulderB.max &&
+      mirrorAngle("shoulder", JOINTS.shoulder.max) >= JOINTS.shoulderB.min,
+  );
+
+  // Commanding one channel has to move its twin with it.
+  const pose: Record<string, number> = {
+    base: 90,
+    shoulder: 120,
+    elbow: 95,
+    wrist: 90,
+    gripper: 75,
+    shoulderB: 90,
+  };
+  const limits = Object.fromEntries(
+    JOINT_NAMES.map((joint) => [joint, { min: JOINTS[joint].min, max: JOINTS[joint].max, calibrated: true }]),
+  ) as Record<(typeof JOINT_NAMES)[number], { min: number; max: number; calibrated: boolean }>;
+  mirrorInto(pose as never, "shoulder", limits);
+  check("commanding the shoulder moves the twin", pose.shoulderB === 80, String(pose.shoulderB));
+
+  const back: Record<string, number> = { ...pose };
+  mirrorInto(back as never, "shoulderB", limits);
+  check(
+    "commanding the twin moves the shoulder back",
+    Math.abs(back.shoulder - 120) < 1e-6,
+    String(back.shoulder),
+  );
 }
 
 /* ── 2. the line splitter ───────────────────────────────────────────── */
@@ -80,7 +141,8 @@ console.log("\n2. Partial reads and batched frames");
   check("three frames in one read are split", batch.length === 3);
   check("PONG parses", parseLine("PONG").kind === "pong");
   check("READY parses", parseLine("READY").kind === "ready");
-  check("a T report parses", parseLine("T,90,110,95,90,75").kind === "joints");
+  check("a T report parses", parseLine("T,90,110,95,90,75,90").kind === "joints");
+  check("a five value T report is rejected", parseLine("T,90,110,95,90,75").kind === "unknown");
   check("an error reply parses", parseLine("ERR,TIMEOUT").kind === "error");
   check("garbage is rejected, not guessed", parseLine("hello").kind === "unknown");
 }

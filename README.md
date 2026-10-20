@@ -286,6 +286,7 @@ disarmed.
 | No `READY`, traffic counter stuck at 0 | Wrong port, a charge-only USB cable, the IDE still holds the port, or the sketch is not running. Try the simulator to prove the interface itself is fine. |
 | The board keeps dropping out mid-move | The servo supply is sagging. Separate supply, shared ground. |
 | A joint moves the wrong axis | Your wiring order differs from the firmware's pin map. Either re-order `PINS` in the sketch, or swap the two entries for that joint in `src/robot/config.ts`. |
+| The arm twists instead of turning | The shoulder pair is out of step — check the far-side servo (D11) is actually on the arm's tail and is not loose. `ERR,SHOULDER-PAIR` in the traffic log says so. |
 | A joint runs backwards | Press **INV** for it in Calibration. |
 | The arm jumps on the first move | The original firmware snaps the servos to the first angle. Flash v2, which ramps from home. |
 | The arm reaches a stop and keeps pushing | The limit was never recorded. Re-run the calibration for that joint. |

@@ -119,6 +119,17 @@ export function JointControls() {
                 </span>
                 <span>{spec.description}</span>
               </p>
+
+              {spec.mirroredBy ? (
+                <p className="mono mt-1 flex items-center gap-2 rounded-md border border-ink-750 bg-ink-850 px-2 py-1 text-[10px] text-mist-400">
+                  <span className="text-signal-500">paired</span>
+                  <span>
+                    D{JOINTS[spec.mirroredBy].pin} {JOINTS[spec.mirroredBy].label} →{" "}
+                    {Math.round(joints[spec.mirroredBy])}°
+                  </span>
+                  <span className="ml-auto text-mist-500">turns the opposite way</span>
+                </p>
+              ) : null}
             </div>
           );
         })}

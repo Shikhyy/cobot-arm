@@ -56,6 +56,7 @@ const HOME_POSE: JointAngles = {
   elbow: JOINTS.elbow.home,
   wrist: JOINTS.wrist.home,
   gripper: JOINTS.gripper.home,
+  shoulderB: JOINTS.shoulderB.home,
 };
 
 export function useRobotController(): ControllerApi {

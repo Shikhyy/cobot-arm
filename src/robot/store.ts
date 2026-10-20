@@ -17,6 +17,7 @@ import {
   type JointName,
   type Preset,
 } from "./config";
+import { mirrorInto } from "./motion";
 import type { TransportKind, TransportStatus } from "./transport/RobotTransport";
 
 export type JointAngles = Record<JointName, number>;
@@ -246,8 +247,16 @@ export const useRobotStore = create<RobotState>((set, get) => ({
     const { limits } = get();
     const limit = limits[joint];
     const clamped = Math.min(limit.max, Math.max(limit.min, value));
-    if (Math.abs(clamped - get().joints[joint]) < 1e-4) return;
-    set((state) => ({ joints: { ...state.joints, [joint]: clamped } }));
+    const current = get().joints[joint];
+    if (Math.abs(clamped - current) < 1e-4) return;
+
+    set((state) => {
+      const joints = { ...state.joints, [joint]: clamped };
+      /* Keep a mirrored pair in step: the two shoulder servos are on opposite
+         sides of the arm, so one has to turn the other way. */
+      mirrorInto(joints, joint, state.limits);
+      return { joints };
+    });
   },
 
   setJoints(angles) {
@@ -258,6 +267,11 @@ export const useRobotStore = create<RobotState>((set, get) => ({
         if (value === undefined || !Number.isFinite(value)) continue;
         const limit = state.limits[joint];
         next[joint] = Math.min(limit.max, Math.max(limit.min, value));
+      }
+      /* Apply the mirroring last, so a pair can never be commanded out of
+         step with itself. */
+      for (const joint of JOINT_NAMES) {
+        if (angles[joint] !== undefined) mirrorInto(next, joint, state.limits);
       }
       return { joints: next };
     });

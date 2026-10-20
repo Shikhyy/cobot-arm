@@ -13,7 +13,22 @@
  * the robot is driven with load.
  */
 
-export const JOINT_NAMES = ["base", "shoulder", "elbow", "wrist", "gripper"] as const;
+/**
+ * The servo channels, in the order they go on the wire.
+ *
+ * The prototype has six servos. Five of them drive the five articulated axes;
+ * the sixth is the second shoulder servo, mounted on the far side of the
+ * arm's tail so it turns the opposite way to its twin. The two are mirrored
+ * mechanically, so one axis is driven by a pair.
+ */
+export const JOINT_NAMES = [
+  "base",
+  "shoulder",
+  "elbow",
+  "wrist",
+  "gripper",
+  "shoulderB",
+] as const;
 export type JointName = (typeof JOINT_NAMES)[number];
 
 export interface JointSpec {
@@ -34,6 +49,16 @@ export interface JointSpec {
   inverted: boolean;
   /** Joints that must be calibrated before they may be driven. */
   requiresCalibration: boolean;
+  /**
+   * The channel this one mirrors. A servo mounted on the opposite side of
+   * the arm has to turn the other way to move the arm the same way, so its
+   * commanded angle is the reflection of its twin's about the pair's centre.
+   */
+  mirrorOf?: JointName;
+  /** The channel that mirrors this one. */
+  mirroredBy?: JointName;
+  /** Set on a channel that has no user-facing control of its own. */
+  hidden?: boolean;
 }
 
 export const JOINTS: Record<JointName, JointSpec> = {
@@ -58,6 +83,7 @@ export const JOINTS: Record<JointName, JointSpec> = {
     maxRate: 90,
     inverted: false,
     requiresCalibration: true,
+    mirroredBy: "shoulderB",
   },
   elbow: {
     label: "Elbow",
@@ -81,6 +107,19 @@ export const JOINTS: Record<JointName, JointSpec> = {
     inverted: false,
     requiresCalibration: true,
   },
+  shoulderB: {
+    label: "Shoulder (mirrored)",
+    description: "Second shoulder servo, mounted on the far side of the arm's tail.",
+    pin: 11,
+    min: 40,
+    max: 180,
+    home: 90,
+    maxRate: 90,
+    inverted: false,
+    requiresCalibration: true,
+    mirrorOf: "shoulder",
+    hidden: true,
+  },
   gripper: {
     label: "Gripper",
     description: "Two-finger end effector. Larger angle = more open.",
@@ -94,7 +133,20 @@ export const JOINTS: Record<JointName, JointSpec> = {
   },
 };
 
+/** The axes the operator steers, in the order they appear in the panels. */
 export const JOINT_ORDER: JointName[] = ["base", "shoulder", "elbow", "wrist", "gripper"];
+
+/**
+ * The angle a mirrored channel has to be given so that it turns the opposite
+ * way to its twin and still moves the arm the same way.
+ */
+export function mirrorAngle(joint: JointName, value: number): number {
+  const spec = JOINTS[joint];
+  const twin = spec.mirrorOf ?? spec.mirroredBy;
+  if (!twin) return value;
+  const other = JOINTS[twin];
+  return other.home + (spec.home - value);
+}
 
 /** Serial settings. 115200 matches the shipped firmware. */
 export const SERIAL = {

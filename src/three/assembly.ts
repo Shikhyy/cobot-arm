@@ -188,7 +188,8 @@ export const PARTS: PartPlacement[] = [
     name: "Mil_1",
     label: "Shoulder axle",
     group: "turret",
-    position: [19.8, 172, -44],
+    // Runs across the whole tail, through both shoulder servos.
+    position: [19.8, 172, -34],
     rotation: [0, 0, 0],
     material: "metal",
     explode: [0, 0, -60],
@@ -360,11 +361,12 @@ export const SERVOS: ServoPlacement[] = [
     explode: [-70, 0, 0],
   },
   {
-    id: "servo-shoulder-left",
-    label: "Shoulder servo (left)",
+    /* The shoulder is driven by two servos on opposite sides of the arm's
+       tail, inside the clevis of the turret bracket — the arrangement the
+       prototype photograph shows. They turn the opposite way. */
+    id: "servo-shoulder-a",
+    label: "Shoulder servo (near side)",
     group: "upperArm",
-    // One micro servo on each side of the arm's tail, inside the clevis of
-    // the turret bracket — the arrangement the prototype photograph shows.
     position: [0, 0, -22],
     axis: "z",
     size: [23, 25, 12],
@@ -372,8 +374,8 @@ export const SERVOS: ServoPlacement[] = [
     explode: [0, 0, -60],
   },
   {
-    id: "servo-shoulder-right",
-    label: "Shoulder servo (right)",
+    id: "servo-shoulder-b",
+    label: "Shoulder servo (far side)",
     group: "upperArm",
     position: [0, 0, 22],
     axis: "z",

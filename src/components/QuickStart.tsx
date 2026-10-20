@@ -53,7 +53,7 @@ export function QuickStart() {
               },
               {
                 title: "Drive",
-                body: "Stick A drives the base (horizontal) and the shoulder (vertical); Stick B drives the elbow and the wrist. The sticks are velocity controls: release one and the arm stops where it is.",
+                body: "Stick A drives the base (horizontal) and the shoulder (vertical); Stick B drives the elbow and the wrist. The sticks are velocity controls: release one and the arm stops where it is. The shoulder is driven by two servos in opposition, so one channel mirrors the other — the Joint controls panel shows both.",
               },
             ].map((step, index) => (
               <li key={step.title} className="flex gap-3">
@@ -76,6 +76,7 @@ export function QuickStart() {
                 ["No READY, nothing appears in the traffic counter", "Wrong port, a charge-only USB cable, or the sketch is not running. Try the simulator to prove the interface itself works."],
                 ["The board keeps dropping out", "The servo supply is sagging. Give the servos their own supply and share the ground."],
                 ["A joint moves the wrong way", "Toggle INV for that joint in Calibration. The app inverts the stick so the model and the machine agree."],
+                ["The arm twists instead of turning", "The two shoulder servos are out of step. Check the far-side servo (D11) is on the arm's tail and is not loose — the firmware reports ERR,SHOULDER-PAIR."],
                 ["The arm jumps on the first move", "The original firmware snaps the servos onto the first angle it is given. Flash arm_controller_v2.ino, which ramps from the home pose instead."],
               ].map(([symptom, fix]) => (
                 <li key={symptom} className="text-[11.5px] leading-relaxed">

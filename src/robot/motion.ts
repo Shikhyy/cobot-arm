@@ -7,7 +7,7 @@
  * machine can be checked in one place.
  */
 
-import { JOINTS, type JointName } from "./config";
+import { JOINTS, mirrorAngle, type JointName } from "./config";
 import type { JointAngles, JointLimit } from "./store";
 import { shapeAxis } from "./joystick";
 
@@ -71,6 +71,27 @@ export function integrateJoystick(
   }
 
   return next;
+}
+
+/**
+ * Mirrors a channel onto its twin, in place.
+ *
+ * The two shoulder servos sit on opposite sides of the arm's tail, so to move
+ * the arm one way one servo has to turn the other way. The mirrored value is
+ * the reflection of its twin's angle about the pair's centre, clamped to the
+ * twin's own limits.
+ */
+export function mirrorInto(
+  joints: JointAngles,
+  joint: JointName,
+  limits: Record<JointName, JointLimit>,
+): JointAngles {
+  const spec = JOINTS[joint];
+  const twin = spec.mirrorOf ?? spec.mirroredBy;
+  if (!twin) return joints;
+  const limit = limits[twin];
+  joints[twin] = Math.min(limit.max, Math.max(limit.min, mirrorAngle(joint, joints[joint])));
+  return joints;
 }
 
 /** True when two poses differ by more than the given epsilon. */

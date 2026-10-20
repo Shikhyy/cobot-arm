@@ -11,7 +11,7 @@
 
 import type { RobotTransport, TransportEvents, TransportKind, TransportStatus } from "./RobotTransport";
 import { parseLine } from "../protocol";
-import { JOINTS, type JointName } from "../config";
+import { JOINT_NAMES, JOINTS, type JointName } from "../config";
 
 export class MockRobotTransport implements RobotTransport {
   readonly kind: TransportKind = "mock";
@@ -26,6 +26,7 @@ export class MockRobotTransport implements RobotTransport {
     elbow: 95,
     wrist: 90,
     gripper: 75,
+    shoulderB: 90,
   };
 
   constructor(private readonly events: TransportEvents) {}
@@ -39,9 +40,7 @@ export class MockRobotTransport implements RobotTransport {
     this.events.onLine("READY");
 
     this.timer = window.setInterval(() => {
-      const values = (["base", "shoulder", "elbow", "wrist", "gripper"] as JointName[])
-        .map((name) => Math.round(this.state[name]))
-        .join(",");
+      const values = JOINT_NAMES.map((name) => Math.round(this.state[name])).join(",");
       this.events.onLine(`T,${values}`);
     }, 250);
   }
@@ -59,7 +58,7 @@ export class MockRobotTransport implements RobotTransport {
       if (parsed.kind === "unknown") continue;
       if (line.startsWith("A,")) {
         const values = line.split(",").slice(1).map((v) => Number(v));
-        (["base", "shoulder", "elbow", "wrist", "gripper"] as JointName[]).forEach((name, i) => {
+        JOINT_NAMES.forEach((name, i) => {
           const value = values[i];
           if (Number.isFinite(value)) this.state[name] = value;
         });
@@ -97,4 +96,5 @@ export const MOCK_HOME: Record<JointName, number> = {
   elbow: JOINTS.elbow.home,
   wrist: JOINTS.wrist.home,
   gripper: JOINTS.gripper.home,
+  shoulderB: JOINTS.shoulderB.home,
 };

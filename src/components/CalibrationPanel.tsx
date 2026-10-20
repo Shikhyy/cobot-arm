@@ -119,7 +119,15 @@ export function CalibrationPanel({ controller }: { controller: ControllerApi }) 
                   type="button"
                   className="btn btn--sm !px-1"
                   title="Record the current angle as the minimum"
-                  onClick={() => setLimit(joint, { min: Math.round(value) })}
+                  onClick={() => {
+                    setLimit(joint, { min: Math.round(value) });
+                    const twin = JOINTS[joint].mirroredBy ?? JOINTS[joint].mirrorOf;
+                    if (twin) {
+                      setLimit(twin, {
+                        min: Math.round(JOINTS[twin].home + (JOINTS[joint].home - value)),
+                      });
+                    }
+                  }}
                 >
                   Min
                 </button>
@@ -127,7 +135,15 @@ export function CalibrationPanel({ controller }: { controller: ControllerApi }) 
                   type="button"
                   className="btn btn--sm !px-1"
                   title="Record the current angle as the maximum"
-                  onClick={() => setLimit(joint, { max: Math.round(value) })}
+                  onClick={() => {
+                    setLimit(joint, { max: Math.round(value) });
+                    const twin = JOINTS[joint].mirroredBy ?? JOINTS[joint].mirrorOf;
+                    if (twin) {
+                      setLimit(twin, {
+                        max: Math.round(JOINTS[twin].home + (JOINTS[joint].home - value)),
+                      });
+                    }
+                  }}
                 >
                   Max
                 </button>

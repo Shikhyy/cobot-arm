@@ -42,6 +42,8 @@ const JOINT_MAP: Record<JointName, { scale: number; sign: number }> = {
   elbow: { scale: 1, sign: 1 },
   wrist: { scale: 1, sign: 1 },
   gripper: { scale: 0, sign: 1 },
+  /* The mirrored shoulder servo drives the same axis as its twin. */
+  shoulderB: { scale: 1, sign: -1 },
 };
 
 export interface RobotModelProps {
