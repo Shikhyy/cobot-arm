@@ -15,7 +15,11 @@ export function GripperControls() {
   const spec = JOINTS.gripper;
 
   const span = limits.max - limits.min || 1;
-  const openness = Math.max(0, Math.min(1, (gripper - limits.min) / span));
+  /* The end effector is linear and runs the other way round to the other
+     axes: 0° is open, 180° is closed. */
+  const openness = Math.max(0, Math.min(1, 1 - (gripper - limits.min) / span));
+  const openAngle = spec.openAngle ?? limits.min;
+  const closeAngle = spec.closeAngle ?? limits.max;
 
   return (
     <section className="panel p-4" aria-labelledby="gripper-heading">
@@ -62,7 +66,7 @@ export function GripperControls() {
             }}
           />
           <p className="mono mt-1.5 text-[10px] text-mist-500">
-            travel {limits.min}° — {limits.max}° · servo D{spec.pin}
+            {openAngle}° open — {closeAngle}° closed · servo D{spec.pin}
           </p>
         </div>
       </div>
@@ -71,14 +75,14 @@ export function GripperControls() {
         <button
           type="button"
           className="btn btn--sm flex-1"
-          onClick={() => setJoint("gripper", limits.max)}
+          onClick={() => setJoint("gripper", openAngle)}
         >
           Open
         </button>
         <button
           type="button"
           className="btn btn--sm flex-1"
-          onClick={() => setJoint("gripper", limits.min)}
+          onClick={() => setJoint("gripper", closeAngle)}
         >
           Close
         </button>
