@@ -18,6 +18,7 @@ import {
   encodeGripper,
   LineBuffer,
   parseLine,
+  describeBoardError,
 } from "../src/robot/protocol.ts";
 import { integrateJoystick, mirrorInto, posesDiffer } from "../src/robot/motion.ts";
 import { JOINTS, JOINT_NAMES, mirrorAngle } from "../src/robot/config.ts";
@@ -165,6 +166,33 @@ console.log("\n2. Partial reads and batched frames");
   check("a T report parses", parseLine("T,90,0,180,180,90,150,90").kind === "joints");
   check("a six value T report is rejected", parseLine("T,90,0,180,180,90,150").kind === "unknown");
   check("an error reply parses", parseLine("ERR,TIMEOUT").kind === "error");
+
+  /* The error code has to survive: a board that says ERR,TIMEOUT means it
+     froze the arm because the link went quiet, and "UNKNOWN" tells the
+     operator nothing at all. */
+  const errTimeout = parseLine("ERR,TIMEOUT");
+  check(
+    "the error code is kept, not swallowed",
+    errTimeout.kind === "error" && errTimeout.code === "TIMEOUT",
+  );
+  const errPair = parseLine("ERR,SHOULDER-PAIR");
+  check(
+    "a two word error code is kept whole",
+    errPair.kind === "error" && errPair.code === "SHOULDER-PAIR",
+  );
+  const errBare = parseLine("ERR");
+  check(
+    "a bare ERR still means something",
+    errBare.kind === "error" && errBare.code === "UNKNOWN",
+  );
+  check(
+    "a timeout is explained in words",
+    /froze the arm/.test(describeBoardError("TIMEOUT")),
+  );
+  check(
+    "a shoulder pair mismatch is explained in words",
+    /180/.test(describeBoardError("SHOULDER-PAIR")),
+  );
   check("garbage is rejected, not guessed", parseLine("hello").kind === "unknown");
 }
 

@@ -74,8 +74,9 @@ export function parseLine(raw: string): ParsedLine {
   if (line === "PONG") return { kind: "pong" };
 
   if (line.startsWith("ERR")) {
-    const [code, ...rest] = line.split(",");
-    return { kind: "error", code: code.slice(3) || "UNKNOWN", detail: rest.join(",") || undefined };
+    const [, ...rest] = line.split(",");
+    const code = (rest[0] ?? "").trim() || "UNKNOWN";
+    return { kind: "error", code, detail: rest.slice(1).join(",") || undefined };
   }
 
   if (line.startsWith("T,")) {
@@ -123,6 +124,34 @@ export class LineBuffer {
 /** Validate a candidate angle before it is written to the wire. */
 export function isValidAngle(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 1000;
+}
+
+/**
+ * Human wording for the controller's error codes.
+ *
+ * The board's codes are terse on purpose — they have to fit in a serial
+ * line — but "TIMEOUT" means nothing to an operator who is watching a
+ * machine that has just stopped moving.
+ */
+export function describeBoardError(code: string, detail?: string): string {
+  switch (code) {
+    case "TIMEOUT":
+      return "The board stopped hearing from the app, so it froze the arm where it was. It moves again as soon as the app sends a command.";
+    case "SHOULDER-PAIR":
+      return "The two shoulder servos disagree — shoulder2 must be 180 − shoulder1. Check the far-side servo (D10) is really on the tail, and that it is tight.";
+    case "JOINTS":
+      return "The board rejected the frame: it did not get the seven values it expects. Check that the v2 sketch is flashed.";
+    case "LENGTH":
+      return "A command was too long for the board to parse, so it was dropped.";
+    case "GRIPPER":
+      return "The board did not understand the gripper command.";
+    case "STOP":
+      return "The board did not understand the stop command.";
+    case "ATTACHED":
+      return "The servos were attached at the home pose.";
+    default:
+      return detail ? `${code}: ${detail}` : code;
+  }
 }
 
 export { INT_RE };

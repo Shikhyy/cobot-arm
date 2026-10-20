@@ -189,6 +189,17 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
               style={{ width: `${Math.min(100, connection.txCount % 100)}%` }}
             />
           </div>
+          {/*
+            Zero bytes out is the single most confusing thing on this
+            panel: the numbers move, the model moves, and nothing is going
+            to the board. Say so in as many words.
+          */}
+          {connection.txCount === 0 && isConnected ? (
+            <p className="mt-1.5 text-[10.5px] leading-relaxed text-amber-400">
+              <strong className="font-medium">Nothing has been sent yet.</strong> The app sends
+              nothing until the motors are armed — arm them below and the frames start flowing.
+            </p>
+          ) : null}
           <p className="mono mt-2 truncate text-[11px] text-mist-400">last: {connection.lastMessage}</p>
 
           {/*

@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CONTROL_TICK_MS, JOINT_NAMES } from "./config";
 import {
+  describeBoardError,
   encodeJointFrame,
   encodePing,
   encodeStop,
@@ -126,12 +127,25 @@ export function useRobotController(): ControllerApi {
             reported: parsed.frame,
           });
           break;
-        case "error":
+        case "error": {
+          /**
+           * The board's own error codes.
+           *
+           * A timeout is the expected consequence of the app not sending
+           * anything — the motors are disarmed, so there is nothing to send,
+           * and the board's watchdog freezes the arm. That is the safe
+           * outcome, not a fault, so it is reported as a note rather than
+           * an alarm.
+           */
+          const text = describeBoardError(parsed.code, parsed.detail);
+          const expected = parsed.code === "TIMEOUT" && !store.getState().hardwareArmed;
           store.getState().setConnection({
             lastMessage: `ERR ${parsed.code}`,
-            error: parsed.detail ? `${parsed.code}: ${parsed.detail}` : parsed.code,
+            error: expected ? null : text,
+            hint: expected ? text : store.getState().connection.hint,
           });
           break;
+        }
         default:
           store.getState().setConnection({ lastMessage: parsed.raw.slice(0, 48) });
       }
@@ -505,6 +519,10 @@ export function useRobotController(): ControllerApi {
         await transport.write(encodeJointFrame(home));
         state.setConnection({
           lastMessage: `Armed — home pose sent (${JOINT_NAMES.map((j) => Math.round(home[j])).join(",")})`,
+          /* The link is live again, so any note the board left about the
+             link having gone quiet is no longer true. */
+          hint: null,
+          error: null,
         });
       } catch {
         state.setConnection({ error: "Could not write to the controller." });

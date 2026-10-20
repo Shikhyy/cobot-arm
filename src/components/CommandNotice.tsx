@@ -40,7 +40,8 @@ export function CommandNotice({ onArm }: { onArm: () => void }) {
   }, []);
 
   const isMock = mode === "mock";
-  const allVerified = JOINT_ORDER.every((joint) => limits[joint].calibrated);
+  const unverified = JOINT_ORDER.filter((joint) => !limits[joint].calibrated);
+  const allVerified = unverified.length === 0;
 
   /* --- the link --- */
   let link: { tone: "amber" | "jade"; text: string };
@@ -93,8 +94,8 @@ export function CommandNotice({ onArm }: { onArm: () => void }) {
         ) : null}
         {!armed && !isMock && !allVerified ? (
           <span>
-            Verify the six joint ranges in Calibration first — an unverified limit is how a robot
-            arm drives itself into its own frame.
+            {unverified.length} of the six joint ranges are still unverified — an unverified limit
+            is how a robot arm drives itself into its own frame.
           </span>
         ) : null}
       </span>
@@ -103,10 +104,15 @@ export function CommandNotice({ onArm }: { onArm: () => void }) {
           type="button"
           className="btn btn--sm btn--primary shrink-0"
           disabled={!allVerified}
-          title={allVerified ? "Take control of the arm" : "Verify every joint range first"}
+          title={
+            allVerified
+              ? "Take control of the arm"
+              : `Verify the remaining ${unverified.length} joint range(s) first`
+          }
           onClick={onArm}
         >
-          <Zap size={12} aria-hidden /> Arm the motors
+          <Zap size={12} aria-hidden />{" "}
+          {allVerified ? "Arm the motors" : `${unverified.length} ranges left`}
         </button>
       ) : null}
       {isMock ? <Radio size={13} className="shrink-0 opacity-60" aria-hidden /> : null}
