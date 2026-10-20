@@ -3,3 +3,5 @@ dist
 *.tsbuildinfo
 __pycache__
 .cad-inspect
+
+.DS_Store
