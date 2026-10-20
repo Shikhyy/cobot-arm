@@ -2,6 +2,7 @@ import { AlertTriangle, BadgeCheck, Crosshair, RotateCcw } from "lucide-react";
 
 import { JOINTS, JOINT_ORDER, type JointName } from "../robot/config";
 import { useRobotStore } from "../robot/store";
+import type { ControllerApi } from "../robot/useRobotController";
 
 /**
  * Calibration workflow.
@@ -11,7 +12,7 @@ import { useRobotStore } from "../robot/store";
  * the real safe range of every joint depends on the assembly, and a wrong
  * limit is how a robot arm drives itself into its own frame.
  */
-export function CalibrationPanel() {
+export function CalibrationPanel({ controller }: { controller: ControllerApi }) {
   const joints = useRobotStore((state) => state.joints);
   const limits = useRobotStore((state) => state.limits);
   const offsets = useRobotStore((state) => state.offsets);
@@ -22,6 +23,7 @@ export function CalibrationPanel() {
   const connection = useRobotStore((state) => state.connection);
   const inverted = useRobotStore((state) => state.inverted);
   const setInverted = useRobotStore((state) => state.setInverted);
+  const hardwareArmed = useRobotStore((state) => state.hardwareArmed);
 
   const live = connection.status === "connected";
   const allVerified = JOINT_ORDER.every((joint) => limits[joint].calibrated);
@@ -51,6 +53,38 @@ export function CalibrationPanel() {
           <em>Zero here</em>.
         </span>
       </p>
+
+      {/* You cannot measure a joint you are not allowed to move, so the
+          calibration gets its own arm switch. */}
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-ink-750 bg-ink-850 p-2.5">
+        <span className="text-[11px] leading-relaxed text-mist-300">
+          {hardwareArmed ? (
+            <>
+              <strong className="font-medium text-jade-400">Movement enabled.</strong> The ±2° buttons
+              now drive the real arm.
+            </>
+          ) : (
+            <>
+              <strong className="font-medium text-mist-100">Enable movement to calibrate.</strong> The
+              arm is brought to its home pose first, then the test buttons move one joint at a time.
+            </>
+          )}
+        </span>
+        {hardwareArmed ? (
+          <button type="button" className="btn btn--sm shrink-0" onClick={() => controller.disarm()}>
+            Stop
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn--sm btn--primary shrink-0"
+            disabled={connection.status !== "connected"}
+            onClick={() => void controller.arm()}
+          >
+            Enable
+          </button>
+        )}
+      </div>
 
       <div className="mt-3 flex flex-col divide-y divide-ink-750">
         {JOINT_ORDER.map((joint) => {

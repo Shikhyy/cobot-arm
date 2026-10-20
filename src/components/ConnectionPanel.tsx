@@ -1,4 +1,4 @@
-import { AlertTriangle, Cable, CircleDot, Info, Radio, Unplug, Usb } from "lucide-react";
+import { AlertTriangle, Cable, CircleDot, Info, Radio, ShieldCheck, Unplug, Usb, Zap } from "lucide-react";
 
 import { JOINT_ORDER, SERIAL } from "../robot/config";
 import { useRobotStore } from "../robot/store";
@@ -17,8 +17,6 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
   const setConnection = useRobotStore((state) => state.setConnection);
   const limits = useRobotStore((state) => state.limits);
   const hardwareArmed = useRobotStore((state) => state.hardwareArmed);
-  const setHardwareArmed = useRobotStore((state) => state.setHardwareArmed);
-  const setMotionLocked = useRobotStore((state) => state.setMotionLocked);
   const autoConnect = useRobotStore((state) => state.autoConnect);
   const setAutoConnect = useRobotStore((state) => state.setAutoConnect);
 
@@ -27,7 +25,9 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
   const isMock = connection.mode === "mock";
   const status = STATUS_COPY[connection.status];
   const isConnected = connection.status === "connected";
-  const allVerified = JOINT_ORDER.every((joint) => limits[joint].calibrated);
+  /* The simulator has no real arm to protect, so the verification gate only
+     applies to a physical link. */
+  const allVerified = isMock || JOINT_ORDER.every((joint) => limits[joint].calibrated);
 
   return (
     <section className="panel p-4" aria-labelledby="connection-heading">
@@ -128,6 +128,17 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
             </button>
           ) : null}
 
+          {isConnected ? (
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => controller.ping()}
+              title="Send a ping and wait for the answer"
+            >
+              <Radio size={13} aria-hidden /> Ping
+            </button>
+          ) : null}
+
           {isMock ? (
             <span className="chip text-amber-400">
               <CircleDot size={10} aria-hidden /> Simulation — no hardware
@@ -153,7 +164,7 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
 
         <div className="rounded-lg border border-ink-750 bg-ink-900/60 p-2.5">
           <div className="flex items-center justify-between gap-3">
-            <span className="eyebrow">Serial activity</span>
+            <span className="eyebrow">Serial traffic</span>
             <span className="mono text-[10.5px] text-mist-500">
               ↑{connection.txCount} ↓{connection.rxCount}
             </span>
@@ -164,9 +175,7 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
               style={{ width: `${Math.min(100, connection.txCount % 100)}%` }}
             />
           </div>
-          <p className="mono mt-2 truncate text-[11px] text-mist-400">
-            last: {connection.lastMessage}
-          </p>
+          <p className="mono mt-2 truncate text-[11px] text-mist-400">last: {connection.lastMessage}</p>
         </div>
 
         {connection.error ? (
@@ -182,30 +191,51 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
           </p>
         ) : null}
 
+        {isConnected && !connection.ready ? (
+          <p className="flex gap-2 rounded-lg border border-ink-700 bg-ink-850 p-2.5 text-[11px] leading-relaxed text-mist-400">
+            <Radio size={13} className="mt-px shrink-0" aria-hidden />
+            <span>
+              Port open, waiting for the controller to announce itself with{" "}
+              <code className="mono">READY</code>. Opening an Arduino port resets the board, so give it
+              a second to boot. If nothing arrives, the sketch is not running or the baud rate is
+              wrong.
+            </span>
+          </p>
+        ) : null}
+
+        {isConnected && connection.ready ? (
+          <p className="mono flex items-center gap-2 text-[10.5px] text-jade-400">
+            <CircleDot size={11} aria-hidden /> Controller ready
+          </p>
+        ) : null}
+
+        {/* ── arming ── */}
         <div className="flex items-center justify-between gap-3 border-t border-ink-750 pt-3">
           <div className="min-w-0">
-            <span className="eyebrow block">Arm</span>
+            <span className="eyebrow block">Motors</span>
             <span className="mono truncate text-[11px] text-mist-400">
-              {connection.portLabel || "—"}
+              {hardwareArmed ? "ARMED" : "disarmed"}
             </span>
           </div>
-          <label
-            className={`flex shrink-0 items-center gap-2 text-[11.5px] ${
-              allVerified ? "text-mist-300" : "text-mist-500"
-            }`}
-          >
-            <input
-              type="checkbox"
-              className="h-3.5 w-3.5 accent-[var(--color-signal-500)]"
-              checked={hardwareArmed}
+          {hardwareArmed ? (
+            <button type="button" className="btn btn--sm" onClick={() => controller.disarm()}>
+              <ShieldCheck size={13} aria-hidden /> Disarm
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn--sm btn--primary"
               disabled={!isConnected || !allVerified}
-              onChange={(event) => {
-                setHardwareArmed(event.target.checked);
-                setMotionLocked(!event.target.checked);
-              }}
-            />
-            Arm the motors
-          </label>
+              onClick={() => void controller.arm()}
+              title={
+                allVerified
+                  ? "Sends the home pose (90, 110, 95, 90, 75) first, then accepts motion. Make sure that pose is safe on your machine."
+                  : "Verify every joint range first"
+              }
+            >
+              <Zap size={13} aria-hidden /> Arm the motors
+            </button>
+          )}
         </div>
 
         {!allVerified ? (
@@ -218,28 +248,22 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
           </p>
         ) : null}
 
-        {isConnected && !connection.ready ? (
-          <p className="flex gap-2 rounded-lg border border-ink-700 bg-ink-850 p-2.5 text-[11px] leading-relaxed text-mist-400">
-            <Radio size={13} className="mt-px shrink-0" aria-hidden />
+        {!isMock ? (
+          <p className="flex gap-2 rounded-lg border border-signal-600/25 bg-signal-600/5 p-2.5 text-[11px] leading-relaxed text-signal-400">
+            <Zap size={13} className="mt-px shrink-0" aria-hidden />
             <span>
-              Port open, waiting for the controller to announce itself with{" "}
-              <code className="mono">READY</code>. Opening an Arduino port resets the board, so give
-              it a second to boot.
+              <strong className="font-medium">Servo power.</strong> Run the servos from a separate
+              5–6 V supply rated for all five, and join its GND to the Arduino GND. Powering them
+              from the board's 5 V pin browns the board out, the port drops and the arm goes dead.
             </span>
-          </p>
-        ) : null}
-
-        {isConnected && connection.ready ? (
-          <p className="mono flex items-center gap-2 text-[10.5px] text-jade-400">
-            <CircleDot size={11} aria-hidden /> Controller ready
           </p>
         ) : null}
 
         <p className="flex gap-2 text-[10.5px] leading-relaxed text-mist-500">
           <Radio size={12} className="mt-0.5 shrink-0" aria-hidden />
           <span>
-            The browser cannot reach a USB device until you pick a port in the system dialog. The
-            Arduino is opened read/write; the Arduino IDE serial monitor must be closed.
+            The browser cannot reach a USB device until you pick it in the device dialog. The Arduino
+            is opened read/write; the Arduino IDE serial monitor must be closed.
           </span>
         </p>
       </div>

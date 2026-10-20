@@ -24,6 +24,7 @@ import {
 import { centerJoysticks, getJoystickAxes } from "./joystick";
 import { integrateJoystick, posesDiffer } from "./motion";
 import { useRobotStore, type JointAngles } from "./store";
+import { JOINTS } from "./config";
 import { MockRobotTransport } from "./transport/MockRobotTransport";
 import { WebSerialTransport } from "./transport/WebSerialTransport";
 import {
@@ -39,12 +40,23 @@ export interface ControllerApi {
   connectMock: () => Promise<void>;
   /** Reconnect to a port the browser has already been granted. */
   connectGranted: (port?: unknown) => Promise<boolean>;
+  arm: () => Promise<void>;
+  disarm: () => void;
   disconnect: () => Promise<void>;
   stop: () => Promise<void>;
   sendPose: (angles: Partial<JointAngles>) => void;
   ping: () => void;
   isBusy: boolean;
 }
+
+/** The pose the controller is brought to when the motors are armed. */
+const HOME_POSE: JointAngles = {
+  base: JOINTS.base.home,
+  shoulder: JOINTS.shoulder.home,
+  elbow: JOINTS.elbow.home,
+  wrist: JOINTS.wrist.home,
+  gripper: JOINTS.gripper.home,
+};
 
 export function useRobotController(): ControllerApi {
   const transportRef = useRef<RobotTransport | null>(null);
@@ -112,14 +124,19 @@ export function useRobotController(): ControllerApi {
       // A lost link must never replay anything. Drop pending motion and
       // disarm the hardware so nothing is sent on reconnect.
       centerJoysticks();
-      lastSentRef.current = null;
+      /* The last transmitted pose is deliberately KEPT. Nulling it would make
+         every later comparison fail, and the arm would never respond again
+         until the page was reloaded. Nothing is replayed: the arm is
+         disarmed and the operator has to arm it again. */
+      hasCommandedRef.current = false;
       store.getState().setMotionLocked(true);
       store.getState().setHardwareArmed(false);
       store.getState().setConnection({
         status: "error",
         error: "The serial connection was lost.",
-        hint: `Pending commands were discarded (${reason}). Reconnect and re-arm before moving the arm.`,
+        hint: `The link dropped (${reason}). Nothing was replayed — re-arm the motors when the board is back.`,
         lastMessage: "LINK LOST",
+        ready: false,
       });
     },
     [store],
@@ -151,7 +168,6 @@ export function useRobotController(): ControllerApi {
       const state = store.getState();
       const transport = transportRef.current;
       if (!transport || state.connection.status !== "connected") return;
-      if (state.motionLocked) return;
 
       const dt = CONTROL_TICK_MS / 1000;
 
@@ -172,12 +188,17 @@ export function useRobotController(): ControllerApi {
       const changed = posesDiffer(state.joints, next);
       if (changed) state.setJoints(next);
 
+      /* The stick is integrated either way, so the readouts show what the
+         operator is asking for. Nothing reaches the hardware until the
+         motors are armed, though. */
+      if (!state.hardwareArmed || state.motionLocked) return;
+
       /* Only write when something actually changed, plus a slow keepalive so
          the firmware watchdog knows the link is alive.
-         IMPORTANT: until the operator has issued a command we send nothing at
+         IMPORTANT: until the operator has armed the motors we send nothing at
          all. Connecting must never move the arm. */
       const last = lastSentRef.current;
-      const moved = !!last && JOINT_NAMES.some((joint) => Math.abs(last[joint] - next[joint]) > 1e-4);
+      const moved = last !== null && JOINT_NAMES.some((joint) => Math.abs(last[joint] - next[joint]) > 1e-4);
       const now = Date.now();
       const keepAliveDue = hasCommandedRef.current && now - keepAliveRef.current > 1000;
 
@@ -418,11 +439,52 @@ export function useRobotController(): ControllerApi {
    * It deliberately does NOT send zero or a home pose: the arm may be holding a
    * board, and the last commanded pose is the safest place to stay.
    */
+  /**
+   * Arm the motors.
+   *
+   * The first frame sent is the HOME pose. That matters: the original
+   * firmware snaps the servos onto the first angle it is given, so handing
+   * it a known home pose is the only safe way to take control of a machine
+   * whose real position nobody knows yet.
+   */
+  const arm = useCallback(async () => {
+    const state = store.getState();
+    if (state.connection.status !== "connected") {
+      state.setConnection({ error: "Connect a controller before arming the motors." });
+      return;
+    }
+    const home = HOME_POSE;
+    state.setJoints(home);
+    state.setHardwareArmed(true);
+    state.setMotionLocked(false);
+    lastSentRef.current = { ...home };
+    hasCommandedRef.current = true;
+    keepAliveRef.current = Date.now();
+    const transport = transportRef.current;
+    if (transport) {
+      try {
+        await transport.write(encodeJointFrame(home));
+        state.setConnection({ lastMessage: `Armed — home pose sent (${home.base},${home.shoulder},${home.elbow},${home.wrist},${home.gripper})` });
+      } catch {
+        state.setConnection({ error: "Could not write to the controller." });
+      }
+    }
+  }, [store]);
+
+  /** Disarm: stop sending, keep the link. */
+  const disarm = useCallback(() => {
+    const state = store.getState();
+    state.setHardwareArmed(false);
+    state.setMotionLocked(true);
+    centerJoysticks();
+    state.setConnection({ lastMessage: "Motors disarmed" });
+  }, [store]);
+
   const stop = useCallback(async () => {
     const state = store.getState();
     state.setMotionLocked(true);
+    state.setHardwareArmed(false);
     centerJoysticks();
-    lastSentRef.current = null;
     const transport = transportRef.current;
     if (transport && state.connection.status === "connected") {
       try {
@@ -467,6 +529,8 @@ export function useRobotController(): ControllerApi {
     connectSerial,
     connectMock,
     connectGranted,
+    arm,
+    disarm,
     disconnect,
     stop,
     sendPose,

@@ -38,6 +38,7 @@ export function StopButton({
           void controller.stop();
           setMotionLocked(true);
         }}
+        title="Stop generating motion and hold the arm where it is"
       >
         <Octagon size={16} aria-hidden />
         Stop motion
@@ -56,7 +57,7 @@ export function StopButton({
           </p>
           {motionLocked ? (
             <p className="mono mt-2 text-[10.5px] text-amber-400">
-              Motion locked · re-arm to resume
+              Motion held · re-arm the motors to resume
             </p>
           ) : isLive ? (
             <p className="mono mt-2 text-[10.5px] text-jade-400">Motion armed · commands are live</p>

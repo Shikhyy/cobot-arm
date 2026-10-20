@@ -14,6 +14,7 @@ import { MotionSettings } from "../components/MotionSettings";
 import { CalibrationPanel } from "../components/CalibrationPanel";
 import { RobotStatus } from "../components/RobotStatus";
 import { ViewSwitcher } from "../components/ViewSwitcher";
+import { QuickStart } from "../components/QuickStart";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { useRobotController } from "../robot/useRobotController";
 import { useRobotStore } from "../robot/store";
@@ -120,6 +121,7 @@ export function ControlPage() {
               <StopButton controller={controller} />
             </div>
 
+            <QuickStart />
             <ConnectionPanel controller={controller} />
 
             <div className="panel p-4">
@@ -147,7 +149,7 @@ export function ControlPage() {
             <GripperControls />
             <MotionPresets />
             <MotionSettings />
-            <CalibrationPanel />
+            <CalibrationPanel controller={controller} />
           </section>
         </div>
       </div>

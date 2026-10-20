@@ -183,74 +183,123 @@ The controller answers `READY` on the serial monitor at 115200 baud, 8N1.
 
 ---
 
-## 5. Connecting over USB
+## 5. How to use it — start to finish
 
-1. Plug the Arduino into a USB port and close the Arduino IDE's serial monitor
-   (the port can only be opened by one program at a time).
-2. Open **/control** in Chrome or Edge.
-3. Set **Mode** to *USB serial* and **Baud** to `115200`.
-4. Press **Select port & connect** and pick the Arduino in the browser's device
-   dialog. The browser will not see a USB device until you choose it.
-5. The **Link** indicator turns green and the panel waits for the controller's
-   `READY` (opening an Arduino port resets the board, so give it a second).
-6. In the **Calibration** panel, test one joint at a time and record the real
-   end stops with **Min** / **Max**, then press **Verify**.
-7. Only then tick **Arm the motors** in the Link panel. Until the motors are
-   armed the app refuses to send anything to the hardware.
+### The five things that have to be true
 
-There is also a **Simulator** mode, clearly labelled `SIMULATOR — no hardware`.
-It exercises the entire interface, including the 3D rig, without moving a motor.
+The arm only moves when **all** of these hold. Each has one failure mode that
+is easy to hit and hard to guess, so they are listed in the order you should
+check them.
 
-### Plug-and-go, like the IDE
+| # | Must be true | Symptom if it is not |
+| --- | --- | --- |
+| 1 | The servos run off a **separate 5–6 V supply**, with its GND joined to the Arduino | The board browns out, the USB link drops, the app holds the motion |
+| 2 | The Arduino IDE's **serial monitor is closed** | The browser cannot open the port — "could not be opened" |
+| 3 | The link is **connected and READY** | The traffic counter stays at zero |
+| 4 | Every joint range is **verified** | “Arm the motors” stays greyed out |
+| 5 | The motors are **armed** | The numbers move, the arm does not |
 
-The browser will not let a page open a serial port on its own: the operating
-system's device picker *is* the security boundary, and that is deliberate.
-What a page **can** do is remember the permission you granted, and the app
-takes advantage of that:
+### 1. Wire the power
 
-* **Reconnect on plug-in** is on by default. Grant the board once and the
-  browser keeps that permission for this origin, so from then on the app
-  reopens the port by itself — no picker, no clicks. Unplug it and the panel
-  says so; plug it back in and the link comes back on its own.
-* A **Reconnect** button appears whenever a previously granted port is
-  available.
-* A reconnect never replays anything: pending commands are dropped and the
-  motors stay disarmed until you arm them again.
+```
+Arduino 5V  ─────────────┐
+Arduino GND ───┬─────────┼── supply GND
+               │         │
+             servo 1..5  └── supply +5..6V   (rated for all five, stalling)
+```
 
-The one thing a website genuinely cannot do is open a port it has never been
-granted, so the *first* connection always asks once.
+The Arduino's 5 V pin cannot supply five servos. Without a common ground the
+serial link also drops under load, which looks exactly like a browser bug.
+Never hot-plug the servos.
 
-If you want true zero-click behaviour from the very first plug — including
-uploading the sketch — that needs a local process, because the browser cannot
-run `arduino-cli`. A small bridge that owns the port and exposes it over
-`ws://localhost` does it; the trade-off is that you have to start it.
+### 2. Flash the firmware
+
+Flash `firmware/arm_controller_v2.ino` if you can. The original
+`arm_controller.ino` also works for the joint frames, but it **snaps** the
+servos onto the very first angle it is given, so your first slider move becomes
+a jump. v2 attaches the servos at the home pose and ramps there at 3°/20 ms.
+
+```
+Arduino IDE → open firmware/arm_controller_v2.ino
+             → Board: Arduino Uno
+             → check PINS / MIN_ANGLE / MAX_ANGLE against your machine
+             → Upload
+```
+
+It answers `READY` at 115200 baud.
+
+### 3. Connect
+
+1. Plug the Arduino in, close the IDE's serial monitor.
+2. Open **/control** in Chrome or Edge (Web Serial needs a secure context:
+   `http://localhost` or HTTPS).
+3. **Mode** → *USB serial*, **Baud** → *115200*.
+4. **Select port & connect** → pick the Arduino in the device dialog.
+   The browser cannot see a USB device until you do this — that is the
+   browser's security boundary, not a bug.
+5. Wait for **Controller ready** (the `READY` line). Opening the port resets
+   the board, so give it a second.
+6. From now on the browser remembers the grant: unplug and plug back in and
+   the link returns on its own.
+
+### 4. Calibrate, one joint at a time
+
+Open **Calibration** in the right-hand column.
+
+1. Press **Enable**. The arm is brought to its **home pose** first — that is
+   the one pose both the app and the firmware agree on.
+2. Use the **±2°** buttons to walk a joint towards its mechanical stop.
+   Keep the board and your fingers out of the way.
+3. At the stop, press **Min** or **Max** to record that angle as the limit.
+4. Press **Verify** for that joint.
+5. If the joint runs the wrong way, press **INV** for it. The app then
+   inverts the stick, so the model and the machine agree.
+6. **Servo zero**: put the link where the 3D model shows its rest pose and
+   press **Zero here**. This is what lines the model up with the real arm —
+   a servo's mechanical centre is rarely at 90°.
+
+Repeat for all five joints. Until every joint is verified, the motors stay
+disarmed.
+
+### 5. Arm and drive
+
+1. **Arm the motors** in the Link panel. This sends the home pose and then
+   accepts motion.
+2. **Stick A** — horizontal drives the base (yaw), vertical drives the
+   shoulder. **Stick B** — horizontal drives the elbow, vertical drives the
+   wrist.
+3. The sticks are **velocity** controls: they add to the commanded angle at a
+   bounded rate. Release one and the arm stops where it is. It never snaps
+   back to a previous or home pose.
+4. The **joint sliders** move one joint by a step you can change.
+5. **Poses** run a stored pose. The built-in ones are *samples*, not a
+   calibration — save your own once the arm is verified.
+6. **STOP MOTION** stops command generation, clears pending motion, recentres
+   the sticks and sends the hold command. It never zeroes the joints and never
+   homes the arm: if it is holding a board, it keeps holding it.
+
+### If the arm does not move
+
+| Symptom | Cause and fix |
+| --- | --- |
+| The numbers move, the arm does not | The motors are not armed. Press **Arm the motors**; check every joint says *Verified*. |
+| No `READY`, traffic counter stuck at 0 | Wrong port, a charge-only USB cable, the IDE still holds the port, or the sketch is not running. Try the simulator to prove the interface itself is fine. |
+| The board keeps dropping out mid-move | The servo supply is sagging. Separate supply, shared ground. |
+| A joint moves the wrong axis | Your wiring order differs from the firmware's pin map. Either re-order `PINS` in the sketch, or swap the two entries for that joint in `src/robot/config.ts`. |
+| A joint runs backwards | Press **INV** for it in Calibration. |
+| The arm jumps on the first move | The original firmware snaps the servos to the first angle. Flash v2, which ramps from home. |
+| The arm reaches a stop and keeps pushing | The limit was never recorded. Re-run the calibration for that joint. |
+
+### The simulator
+
+**Mode** → *Simulator* → **Start simulator**. It answers `READY`, reports its
+state and accepts the same frames, so the whole interface can be exercised
+with no board attached. It is labelled `SIMULATOR — no hardware` everywhere
+and never claims to be the real arm.
 
 ---
 
-## 6. Using the controller
-
-* **Stick A** — horizontal drives the base (yaw), vertical drives the shoulder.
-* **Stick B** — horizontal drives the elbow, vertical drives the wrist.
-* The sticks are **velocity** controls. They integrate into the commanded angles
-  at the rate set in *Motion settings*. Releasing a stick stops the motion
-  where it is; it never sends the arm back to a previous or home pose.
-* **Joint sliders** move one joint by a step, with an increment you can change.
-* **Poses** run the built-in sample poses, or one you saved from the current
-  commanded pose. Saved poses live in this browser's local storage.
-* **STOP MOTION** stops command generation, clears pending motion, recentres
-  the sticks and sends the stop verb. It never zeroes the joints and never
-  homes the arm — if it is holding a board, it keeps holding it.
-
-### Safety
-
-The stop button is a **command, not a safety device**. It cannot cut servo
-power. Before the arm carries anything, fit a real switch or a latching relay
-in the servo supply, and keep the arm's working envelope clear of anything it
-could hit.
-
----
-
-## 7. The serial protocol
+## 6. The serial protocol
 
 One command per line, LF terminated, 115200 baud 8N1.
 
@@ -265,13 +314,21 @@ T                                               report the targets  (v2)
 
 Replies: `READY`, `PONG`, `T,b,s,e,w,g`, `OK,…`, `ERR,…`.
 
+### The arming contract
+
+The app sends **nothing** to the hardware until the operator arms the motors.
+Arming sends one frame — the home pose — and from then on a frame goes out
+whenever the commanded angles change, plus a 1 Hz keepalive so the firmware
+watchdog stays happy. Unplugging the board, pressing STOP, or reloading the
+page all disarm the app; nothing is ever replayed on reconnect.
+
 The app **only depends on the `A,…` frame**, so the original firmware works
 unchanged. `src/robot/protocol.ts` and `firmware/arm_controller_v2.ino` are the
 two halves of the contract and are kept in step with each other.
 
 ---
 
-## 8. Does it work with the real robot?
+## 7. Does it work with the real robot?
 
 This was audited end to end, and the audit found and fixed three problems that
 would have stopped the arm responding at all.
@@ -345,7 +402,7 @@ and balance of the arm.
 
 ---
 
-## 9. How the app is put together
+## 8. How the app is put together
 
 ```
 src/
@@ -390,7 +447,7 @@ Two rules hold the design together:
 
 ---
 
-## 10. Known limitations
+## 9. Known limitations
 
 * The joint **limits and directions are the shipped firmware's defaults**,
   not a calibration of any particular machine. Calibrate before use.
