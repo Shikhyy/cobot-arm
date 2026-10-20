@@ -9,6 +9,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { Stage } from "./Stage";
 import { director, sampleShots, VIEWS } from "./director";
 import { useReducedMotion } from "./useMotionPreference";
+import { MIN_FRAMING_RADIUS, baseAnchor, toolAnchor } from "./framing";
 
 export interface RobotViewportProps {
   children?: ReactNode;
@@ -26,6 +27,14 @@ export interface RobotViewportProps {
   showZoomControls?: boolean;
   /** Named inspection view; changing it moves the camera. */
   view?: string;
+  /**
+   * Keep the whole machine framed while it moves.
+   *
+   * The camera follows the tool: it re-aims at a point between the base and
+   * the tool and eases back until both fit in shot, so driving a joystick
+   * never walks the arm out of frame.
+   */
+  autoFrame?: boolean;
 }
 
 /** Imperative camera controls, shared between the overlay buttons and the rig. */
@@ -54,6 +63,7 @@ export function RobotViewport({
   scrollDriven = false,
   showZoomControls = false,
   view,
+  autoFrame = false,
 }: RobotViewportProps) {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
@@ -115,6 +125,7 @@ export function RobotViewport({
             interactive={interactive}
             apiRef={api}
             view={view}
+            autoFrame={autoFrame}
           />
           <VisibilityPause />
         </Canvas>
@@ -162,6 +173,7 @@ function CameraRig({
   interactive,
   apiRef,
   view,
+  autoFrame,
 }: {
   home: { position: [number, number, number]; target: [number, number, number]; fov?: number };
   resetSignal: number;
@@ -170,6 +182,7 @@ function CameraRig({
   interactive: boolean;
   apiRef: React.MutableRefObject<ViewportApi | null>;
   view?: string;
+  autoFrame?: boolean;
 }) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
@@ -183,6 +196,10 @@ function CameraRig({
   const poseTarget = useMemo(() => new THREE.Vector3(), []);
   const poseFov = useRef(34);
   const animating = useRef(false);
+
+  /* Auto-framing scratch vectors. */
+  const frameMid = useMemo(() => new THREE.Vector3(), []);
+  const frameDir = useMemo(() => new THREE.Vector3(), []);
 
   /** The framing a named inspection view asks for. */
   const poseFor = useCallback(
@@ -256,6 +273,18 @@ function CameraRig({
     if (!controls) return;
     const d = Math.min(delta, 0.05);
 
+    if (import.meta.env.DEV && typeof window !== "undefined") {
+      (window as unknown as Record<string, unknown>).__rig = {
+        animating: animating.current,
+        interacting: director.interacting,
+        pose: posePosition.toArray().map((v) => +v.toFixed(2)),
+        poseTarget: poseTarget.toArray().map((v) => +v.toFixed(2)),
+        currentTarget: currentTarget.toArray().map((v) => +v.toFixed(2)),
+        pos: perspective.position.toArray().map((v) => +v.toFixed(2)),
+        fov: +perspective.fov.toFixed(1),
+      };
+    }
+
     if (scrollDriven && !director.interacting) {
       const shot = sampleShots(director.progress);
       desiredPosition.copy(shot.position);
@@ -321,6 +350,41 @@ function CameraRig({
       return;
     }
 
+    /**
+     * Auto-framing.
+     *
+     * The camera keeps both the machine and its tool in shot: it aims at a
+     * point between the base and the tool, and eases back until the pair
+     * fits the frustum. The viewing direction the operator chose is kept, so
+     * this only ever pans and dollies — it never spins the view around.
+     */
+    if (autoFrame && !director.interacting) {
+      frameMid.copy(baseAnchor).lerp(toolAnchor, 0.55);
+
+      const radius = Math.max(MIN_FRAMING_RADIUS, baseAnchor.distanceTo(toolAnchor) * 0.62);
+      const vFov = THREE.MathUtils.degToRad(perspective.fov);
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * Math.max(perspective.aspect, 0.5));
+      const needed = Math.max(radius / Math.sin(vFov / 2), radius / Math.sin(hFov / 2));
+
+      frameDir.copy(perspective.position).sub(currentTarget);
+      if (frameDir.lengthSq() < 1e-6) frameDir.set(5, 2.2, 6.7);
+      frameDir.normalize();
+
+      /**
+       * The camera pulls back when the arm reaches too far, but it never
+       * pushes in on its own — the operator's own zoom is left alone.
+       */
+      const distance = Math.max(needed, perspective.position.distanceTo(currentTarget));
+      desiredPosition.copy(frameMid).addScaledVector(frameDir, distance);
+
+      const k = reduced ? 1 : 1 - Math.pow(0.02, d);
+      perspective.position.lerp(desiredPosition, k);
+      currentTarget.lerp(frameMid, k);
+      controls.target.copy(currentTarget);
+      perspective.lookAt(currentTarget);
+      return;
+    }
+
     controls.update();
   });
 
@@ -364,6 +428,7 @@ function VisibilityPause() {
         __camera: camera,
         __scene: scene,
         __controls: controls,
+        __director: director,
       });
     }
   }, [camera, scene, controls]);
