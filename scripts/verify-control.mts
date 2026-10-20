@@ -54,28 +54,29 @@ const LIMITS_FULL = Object.fromEntries(
 ) as Record<(typeof JOINT_NAMES)[number], { min: number; max: number; calibrated: boolean }>;
 
 /* ── 1. the wire format ─────────────────────────────────────────────── */
-console.log("\n1. Wire format (must match arm_controller.ino)");
+console.log("\n1. Wire format (must match the sketch)");
 {
   const frame = encodeJointFrame({
     base: 90,
-    shoulder: 110,
-    elbow: 95,
+    shoulder1: 0,
+    shoulder2: 180,
+    elbow: 180,
     wrist: 90,
-    gripper: 75,
-    shoulderB: 90,
+    wristRotation: 150,
+    gripper: 90,
   });
-  check("frame is A,b,s,e,w,g,sB + LF", frame === "A,90,110,95,90,75,90\n", JSON.stringify(frame));
+  check("frame is A,b,s1,s2,e,w,wr,g + LF", frame === "A,90,0,180,180,90,150,90\n", JSON.stringify(frame));
 
-  // The firmware parses this with sscanf(s + 2, "%d,%d,%d,%d,%d,%d").
+  // The sketch parses this with sscanf(s + 2, "%d,%d,%d,%d,%d,%d,%d").
   const payload = frame.trim().slice(2);
   const values = payload.split(",").map(Number);
   check(
-    "sscanf would read exactly 6 integers",
-    values.length === 6 && values.every((v) => Number.isInteger(v)),
+    "sscanf would read exactly 7 integers",
+    values.length === 7 && values.every((v) => Number.isInteger(v)),
   );
   check(
-    "channel order is base, shoulder, elbow, wrist, gripper, shoulderB",
-    values.join(",") === "90,110,95,90,75,90",
+    "channel order is base, shoulder1, shoulder2, elbow, wrist, wristRot, gripper",
+    values.join(",") === "90,0,180,180,90,150,90",
   );
 
   check("stop verb is S,0", encodeStop() === "S,0\n");
@@ -86,47 +87,43 @@ console.log("\n1. Wire format (must match arm_controller.ino)");
 /* ── 1b. the mirrored shoulder pair ────────────────────────────────────── */
 console.log("\n1b. The mirrored shoulder pair");
 {
-  check("the shoulder has a twin", JOINTS.shoulder.mirroredBy === "shoulderB");
-  check("the twin knows what it mirrors", JOINTS.shoulderB.mirrorOf === "shoulder");
-  check("the twin is a different pin", JOINTS.shoulderB.pin !== JOINTS.shoulder.pin);
+  check("the shoulder has a twin", JOINTS.shoulder1.mirroredBy === "shoulder2");
+  check("the twin knows what it mirrors", JOINTS.shoulder2.mirrorOf === "shoulder1");
+  check("the twin is a different pin", JOINTS.shoulder2.pin !== JOINTS.shoulder1.pin);
+  check("the pair is on the right pins", JOINTS.shoulder1.pin === 9 && JOINTS.shoulder2.pin === 10);
 
   // The two servos sit on opposite sides of the arm, so one turns the other
-  // way: the mirrored angle is the reflection about the pair's centre.
+  // way: the mirrored angle is 180 - x, exactly as the prototype runs it.
+  check("at shoulder1 = 0 the twin sits at 180", mirrorAngle("shoulder1", 0) === 180);
+  check("at shoulder1 = 90 the twin sits at 90", mirrorAngle("shoulder1", 90) === 90);
+  check("at shoulder1 = 180 the twin sits at 0", mirrorAngle("shoulder1", 180) === 0);
   check(
-    "at the home angle the twin is at its own home",
-    mirrorAngle("shoulder", JOINTS.shoulder.home) === JOINTS.shoulderB.home,
-  );
-  check(
-    "ten degrees on the shoulder is ten degrees the other way on the twin",
-    mirrorAngle("shoulder", JOINTS.shoulder.home + 10) === JOINTS.shoulderB.home - 10,
-  );
-  check(
-    "the mirrored angle stays inside the twin's travel",
-    mirrorAngle("shoulder", JOINTS.shoulder.min) <= JOINTS.shoulderB.max &&
-      mirrorAngle("shoulder", JOINTS.shoulder.max) >= JOINTS.shoulderB.min,
+    "the mirror is exactly 180 - x",
+    [0, 30, 90, 137].every((x) => mirrorAngle("shoulder1", x) === 180 - x),
   );
 
   // Commanding one channel has to move its twin with it.
   const pose: Record<string, number> = {
     base: 90,
-    shoulder: 120,
-    elbow: 95,
+    shoulder1: 120,
+    shoulder2: 180,
+    elbow: 180,
     wrist: 90,
-    gripper: 75,
-    shoulderB: 90,
+    wristRotation: 150,
+    gripper: 90,
   };
   const limits = Object.fromEntries(
     JOINT_NAMES.map((joint) => [joint, { min: JOINTS[joint].min, max: JOINTS[joint].max, calibrated: true }]),
   ) as Record<(typeof JOINT_NAMES)[number], { min: number; max: number; calibrated: boolean }>;
-  mirrorInto(pose as never, "shoulder", limits);
-  check("commanding the shoulder moves the twin", pose.shoulderB === 80, String(pose.shoulderB));
+  mirrorInto(pose as never, "shoulder1", limits);
+  check("commanding the shoulder moves the twin", pose.shoulder2 === 60, String(pose.shoulder2));
 
   const back: Record<string, number> = { ...pose };
-  mirrorInto(back as never, "shoulderB", limits);
+  mirrorInto(back as never, "shoulder2", limits);
   check(
     "commanding the twin moves the shoulder back",
-    Math.abs(back.shoulder - 120) < 1e-6,
-    String(back.shoulder),
+    Math.abs(back.shoulder1 - 120) < 1e-6,
+    String(back.shoulder1),
   );
 }
 
@@ -134,15 +131,19 @@ console.log("\n1b. The mirrored shoulder pair");
 console.log("\n2. Partial reads and batched frames");
 {
   const buffer = new LineBuffer();
-  check("a split frame is reassembled", buffer.push("A,90,110,95").length === 0);
-  const lines = buffer.push(",90,75\n");
-  check("the tail completes one frame", lines.length === 1 && lines[0] === "A,90,110,95,90,75", JSON.stringify(lines));
+  check("a split frame is reassembled", buffer.push("A,90,0,180,180").length === 0);
+  const lines = buffer.push(",90,150,90\n");
+  check(
+    "the tail completes one frame",
+    lines.length === 1 && lines[0] === "A,90,0,180,180,90,150,90",
+    JSON.stringify(lines),
+  );
   const batch = new LineBuffer().push("READY\nA,1,2,3,4,5\nPONG\n");
   check("three frames in one read are split", batch.length === 3);
   check("PONG parses", parseLine("PONG").kind === "pong");
   check("READY parses", parseLine("READY").kind === "ready");
-  check("a T report parses", parseLine("T,90,110,95,90,75,90").kind === "joints");
-  check("a five value T report is rejected", parseLine("T,90,110,95,90,75").kind === "unknown");
+  check("a T report parses", parseLine("T,90,0,180,180,90,150,90").kind === "joints");
+  check("a six value T report is rejected", parseLine("T,90,0,180,180,90,150").kind === "unknown");
   check("an error reply parses", parseLine("ERR,TIMEOUT").kind === "error");
   check("garbage is rejected, not guessed", parseLine("hello").kind === "unknown");
 }
@@ -289,10 +290,10 @@ console.log("\n7. Rate limits against the firmware");
     maxRate: 200, // the global cap is generous
     dt: 0.04,
   });
-  const jointCap = JOINTS.shoulder.maxRate;
+  const jointCap = JOINTS.shoulder1.maxRate;
   check(
     "the per-joint cap wins over a larger global cap",
-    Math.abs(perJoint.shoulder - (HOME.shoulder + jointCap * 0.04)) < 1e-6,
+    Math.abs(perJoint.shoulder1 - (HOME.shoulder1 + jointCap * 0.04)) < 1e-6,
   );
   check(
     "the app's slowest rate is still faster than the firmware's 150 deg/s ramp",
