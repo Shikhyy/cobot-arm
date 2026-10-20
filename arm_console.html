@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arm Console</title>
+<style>
+  :root {
+    --bg: #E6E9ED;
+    --panel: #F6F7F9;
+    --ink: #17202B;
+    --muted: #596675;
+    --line: #C5CCD4;
+    --accent: #D8362B;
+    --accent-dark: #A82219;
+    --ok: #1F7A5C;
+    --warn: #B7791F;
+    --range: #BFD6D0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .app { max-width: 1080px; margin: 0 auto; padding: 20px 20px 40px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  h1 { font-size: 22px; margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .conn { display: flex; align-items: center; gap: 12px; }
+  .status { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--warn); }
+  .dot.on { background: var(--ok); }
+
+  button {
+    font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    padding: 8px 14px; border-radius: 8px;
+  }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible, input:focus-visible { outline: 3px solid #7FB0FF; outline-offset: 2px; }
+  button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  button.freeze.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; margin-bottom: 16px; }
+  .panel h2 { font-size: 15px; margin: 0 0 12px; font-weight: 650; }
+
+  .sticks { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .stick { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .pad {
+    position: relative; width: min(300px, 100%); aspect-ratio: 1; border-radius: 50%;
+    border: 2px solid var(--line); touch-action: none; user-select: none; cursor: grab;
+    background:
+      linear-gradient(var(--line), var(--line)) center / 1px 84% no-repeat,
+      linear-gradient(var(--line), var(--line)) center / 84% 1px no-repeat,
+      radial-gradient(circle, #fff 0 38%, #EDF0F3 39% 100%);
+  }
+  .pad.active { cursor: grabbing; border-color: var(--accent); }
+  .knob {
+    position: absolute; left: 31%; top: 31%; width: 38%; height: 38%; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #F0645A, var(--accent) 55%, var(--accent-dark));
+    box-shadow: 0 6px 14px rgba(168, 34, 25, .35); pointer-events: none;
+  }
+  .caption { text-align: center; font-size: 14px; }
+  .caption b { font-weight: 650; }
+  .caption span { color: var(--muted); display: block; font-size: 13px; }
+
+  .row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .row label { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  input[type=range] { accent-color: var(--accent); width: 220px; }
+  .grow { flex: 1 1 260px; }
+  .grow input[type=range] { width: 100%; }
+
+  .joint { display: grid; grid-template-columns: 150px 1fr 56px auto; gap: 14px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  .joint:first-of-type { border-top: 0; }
+  .jname { font-weight: 600; }
+  .jname small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+  .track { position: relative; height: 12px; background: #DDE2E7; border-radius: 6px; }
+  .track .range { position: absolute; top: 0; bottom: 0; background: var(--range); border-radius: 6px; }
+  .track .marker { position: absolute; top: -4px; width: 4px; height: 20px; margin-left: -2px; background: var(--accent); border-radius: 2px; }
+  .val { text-align: right; font-weight: 650; }
+  .limits { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+  .limits input[type=number] { width: 58px; padding: 4px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; font: inherit; }
+  .limits label { display: flex; align-items: center; gap: 4px; }
+
+  .poses { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .pose { border: 1px solid var(--line); border-radius: 10px; padding: 10px; background: #fff; display: flex; flex-direction: column; gap: 8px; }
+  .pose .pname { font-weight: 600; }
+  .pose .pvals { color: var(--muted); font-size: 12px; }
+  .pose .btns { display: flex; gap: 6px; }
+  .pose button { padding: 5px 10px; font-size: 13px; }
+
+  .foot { color: var(--muted); font-size: 13px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .foot code { background: #DDE2E7; padding: 1px 6px; border-radius: 4px; }
+  .keys { color: var(--muted); font-size: 13px; margin-top: 10px; }
+
+  @media (max-width: 720px) {
+    .sticks { grid-template-columns: 1fr; }
+    .joint { grid-template-columns: 1fr 56px; }
+    .joint .track { grid-column: 1 / -1; order: 3; }
+    .joint .limits { grid-column: 1 / -1; order: 4; flex-wrap: wrap; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div>
+      <h1>Arm Console</h1>
+      <div class="sub">Drag the joysticks with your trackpad or mouse. Release to hold the position.</div>
+    </div>
+    <div class="conn">
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Not connected (practice mode)</span></div>
+      <button class="freeze" id="freezeBtn" title="Space bar">Freeze controls</button>
+      <button class="primary" id="connectBtn">Connect Arduino</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="sticks">
+      <div class="stick">
+        <div class="pad" id="padL"><div class="knob"></div></div>
+        <div class="caption"><b>Left stick</b><span>Left/right: Base &nbsp;·&nbsp; Up/down: Shoulder<br>Keys: W A S D</span></div>
+      </div>
+      <div class="stick">
+        <div class="pad" id="padR"><div class="knob"></div></div>
+        <div class="caption"><b>Right stick</b><span>Left/right: Wrist &nbsp;·&nbsp; Up/down: Elbow<br>Keys: arrow keys</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row">
+      <label class="grow">Gripper
+        <input type="range" id="gripSlider" step="1">
+      </label>
+      <button id="gripOpen">Open</button>
+      <button id="gripClose">Close</button>
+      <label>Speed
+        <input type="range" id="speed" min="10" max="120" step="5" value="40">
+        <span id="speedVal">40°/s</span>
+      </label>
+    </div>
+    <div class="keys">Gripper keys: Q opens, E closes. Space freezes or unfreezes all controls.</div>
+  </section>
+
+  <section class="panel">
+    <h2>Joints</h2>
+    <div id="joints"></div>
+    <div class="keys">Shaded area is the allowed range. If a joint moves the wrong way, tick “invert”. Limits are also set in the Arduino sketch.</div>
+  </section>
+
+  <section class="panel">
+    <h2>Saved poses</h2>
+    <div class="poses" id="poses"></div>
+    <div class="keys">Go moves the arm smoothly to the pose. Move the arm where you want it, then press Save to store it. Poses are remembered in this browser.</div>
+  </section>
+
+  <div class="foot">
+    <div>Last sent: <code id="lastSent">nothing yet</code></div>
+    <div>Arduino says: <code id="lastRecv">nothing yet</code></div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- Joint setup: edit names, defaults and home angles here ---------- */
+const JOINTS = [
+  { key: "base",     name: "Base",     hint: "Left stick, left/right", min: 0,  max: 180, home: 90, inv: false },
+  { key: "shoulder", name: "Shoulder", hint: "Left stick, up/down",    min: 20, max: 160, home: 90, inv: false },
+  { key: "elbow",    name: "Elbow",    hint: "Right stick, up/down",   min: 20, max: 160, home: 90, inv: false },
+  { key: "wrist",    name: "Wrist",    hint: "Right stick, left/right",min: 0,  max: 180, home: 90, inv: false },
+  { key: "gripper",  name: "Gripper",  hint: "Slider, or Q / E",       min: 30, max: 120, home: 60, inv: false },
+];
+const N = JOINTS.length;
+const SCALE_MAX = 180;
+const DEADZONE = 0.08;
+const SEND_INTERVAL_MS = 40;
+const STORE_KEY = "armconsole.v1";
+
+/* Placeholder poses: use Save to teach your real ones. */
+let poses = [
+  { name: "Home",     a: JOINTS.map(j => j.home) },
+  { name: "Pick PCB", a: [90, 90, 90, 90, 110] },
+  { name: "Tilt 30°", a: [90, 90, 90, 120, 60] },
+  { name: "Tilt 45°", a: [90, 90, 90, 135, 60] },
+  { name: "Release",  a: [90, 90, 90, 90, 110] },
+];
+
+let speed = 40;                       // degrees per second at full stick
+const angles = JOINTS.map(j => j.home);
+let goal = null;                      // array when a pose move is in progress
+let frozen = false;
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+function clampJoint(i, v) { return clamp(v, JOINTS[i].min, JOINTS[i].max); }
+
+/* ---------- Saved settings ---------- */
+function loadSaved() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE_KEY) || "null");
+    if (!s) return;
+    if (s.joints) s.joints.forEach((v, i) => { if (JOINTS[i]) Object.assign(JOINTS[i], { min: v.min, max: v.max, inv: v.inv }); });
+    if (s.poses && s.poses.length === poses.length) poses = s.poses;
+    if (s.speed) speed = s.speed;
+  } catch (e) { /* storage unavailable: use defaults */ }
+}
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      joints: JOINTS.map(j => ({ min: j.min, max: j.max, inv: j.inv })), poses, speed
+    }));
+  } catch (e) { /* ignore */ }
+}
+loadSaved();
+JOINTS.forEach((j, i) => { angles[i] = clamp(j.home, j.min, j.max); });
+
+/* ---------- Virtual joysticks ---------- */
+function makePad(el) {
+  const knob = el.querySelector(".knob");
+  const s = { x: 0, y: 0, id: null };
+  function draw() {
+    const travel = el.getBoundingClientRect().width * 0.31;
+    knob.style.transform = `translate(${s.x * travel}px, ${-s.y * travel}px)`;
+  }
+  function update(e) {
+    const r = el.getBoundingClientRect();
+    const R = r.width / 2;
+    let dx = (e.clientX - (r.left + R)) / R;
+    let dy = (e.clientY - (r.top + R)) / R;
+    const m = Math.hypot(dx, dy);
+    if (m > 1) { dx /= m; dy /= m; }
+    s.x = dx; s.y = -dy;
+    draw();
+  }
+  el.addEventListener("pointerdown", e => {
+    el.setPointerCapture(e.pointerId); s.id = e.pointerId; el.classList.add("active"); update(e); e.preventDefault();
+  });
+  el.addEventListener("pointermove", e => { if (s.id === e.pointerId) update(e); });
+  const release = e => {
+    if (s.id !== e.pointerId) return;
+    s.id = null; s.x = 0; s.y = 0; el.classList.remove("active"); draw();
+  };
+  el.addEventListener("pointerup", release);
+  el.addEventListener("pointercancel", release);
+  window.addEventListener("resize", draw);
+  return s;
+}
+const padL = makePad(document.getElementById("padL"));
+const padR = makePad(document.getElementById("padR"));
+
+/* ---------- Keyboard ---------- */
+const keys = {};
+function isTyping(t) { return t && t.tagName === "INPUT" && (t.type === "number" || t.type === "text"); }
+window.addEventListener("keydown", e => {
+  if (isTyping(e.target)) return;
+  const k = e.key.toLowerCase();
+  if (["w", "a", "s", "d", "q", "e", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) { keys[k] = true; e.preventDefault(); }
+  if (e.key === " " && e.target.tagName !== "BUTTON") { toggleFreeze(); e.preventDefault(); }
+});
+window.addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
+window.addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
+
+/* ---------- UI build ---------- */
+const jointsEl = document.getElementById("joints");
+const rows = JOINTS.map((j, i) => {
+  const d = document.createElement("div");
+  d.className = "joint";
+  d.innerHTML = `
+    <div class="jname">${j.name}<small>${j.hint}</small></div>
+    <div class="track"><div class="range"></div><div class="marker"></div></div>
+    <div class="val">0°</div>
+    <div class="limits">
+      <label>min <input type="number" class="min" min="0" max="180"></label>
+      <label>max <input type="number" class="max" min="0" max="180"></label>
+      <label><input type="checkbox" class="inv"> invert</label>
+    </div>`;
+  jointsEl.appendChild(d);
+  const minI = d.querySelector(".min"), maxI = d.querySelector(".max"), invI = d.querySelector(".inv");
+  minI.value = j.min; maxI.value = j.max; invI.checked = j.inv;
+  minI.addEventListener("change", () => { j.min = clamp(+minI.value || 0, 0, j.max - 1); minI.value = j.min; angles[i] = clampJoint(i, angles[i]); save(); });
+  maxI.addEventListener("change", () => { j.max = clamp(+maxI.value || 180, j.min + 1, 180); maxI.value = j.max; angles[i] = clampJoint(i, angles[i]); save(); });
+  invI.addEventListener("change", () => { j.inv = invI.checked; save(); });
+  return { range: d.querySelector(".range"), marker: d.querySelector(".marker"), val: d.querySelector(".val") };
+});
+
+const gripSlider = document.getElementById("gripSlider");
+const GI = JOINTS.findIndex(j => j.key === "gripper");
+function syncGripRange() { gripSlider.min = JOINTS[GI].min; gripSlider.max = JOINTS[GI].max; }
+syncGripRange();
+let gripDrag = false;
+gripSlider.addEventListener("pointerdown", () => { gripDrag = true; });
+window.addEventListener("pointerup", () => { gripDrag = false; });
+gripSlider.addEventListener("input", () => { goal = null; angles[GI] = clampJoint(GI, +gripSlider.value); });
+document.getElementById("gripOpen").addEventListener("click", () => { goal = angles.slice(); goal[GI] = JOINTS[GI].max; });
+document.getElementById("gripClose").addEventListener("click", () => { goal = angles.slice(); goal[GI] = JOINTS[GI].min; });
+
+const speedEl = document.getElementById("speed"), speedVal = document.getElementById("speedVal");
+speedEl.value = speed; speedVal.textContent = speed + "°/s";
+speedEl.addEventListener("input", () => { speed = +speedEl.value; speedVal.textContent = speed + "°/s"; save(); });
+
+const posesEl = document.getElementById("poses");
+const poseVals = poses.map((p, idx) => {
+  const d = document.createElement("div");
+  d.className = "pose";
+  d.innerHTML = `<div class="pname">${p.name}</div><div class="pvals"></div>
+    <div class="btns"><button class="go">Go</button><button class="sv">Save</button></div>`;
+  posesEl.appendChild(d);
+  const vals = d.querySelector(".pvals");
+  const show = () => { vals.textContent = p.a.join("  "); };
+  show();
+  d.querySelector(".go").addEventListener("click", () => { goal = p.a.map((v, i) => clampJoint(i, v)); });
+  d.querySelector(".sv").addEventListener("click", () => { p.a = angles.map(Math.round); show(); save(); setStatus(`Saved “${p.name}”`); });
+  return show;
+});
+
+const freezeBtn = document.getElementById("freezeBtn");
+function toggleFreeze() {
+  frozen = !frozen; goal = frozen ? null : goal;
+  freezeBtn.classList.toggle("on", frozen);
+  freezeBtn.textContent = frozen ? "Controls frozen" : "Freeze controls";
+}
+freezeBtn.addEventListener("click", toggleFreeze);
+
+/* ---------- Serial connection ---------- */
+const connectBtn = document.getElementById("connectBtn");
+const dot = document.getElementById("dot");
+const statusText = document.getElementById("statusText");
+const lastSentEl = document.getElementById("lastSent");
+const lastRecvEl = document.getElementById("lastRecv");
+let port = null, writer = null, reader = null, pipeDone = null, connected = false, gotReady = false;
+let statusTimer = null;
+
+function setStatus(msg) {
+  statusText.textContent = msg;
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(refreshStatus, 2500);
+}
+function refreshStatus() {
+  dot.classList.toggle("on", connected);
+  statusText.textContent = connected ? "Connected to Arduino" : "Not connected (practice mode)";
+  connectBtn.textContent = connected ? "Disconnect" : "Connect Arduino";
+}
+
+async function readLoop() {
+  const decoder = new TextDecoderStream();
+  pipeDone = port.readable.pipeTo(decoder.writable).catch(() => {});
+  reader = decoder.readable.getReader();
+  let buf = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += value;
+      let idx;
+      while ((idx = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, idx).trim(); buf = buf.slice(idx + 1);
+        if (line) { lastRecvEl.textContent = line; if (line.startsWith("READY")) gotReady = true; }
+      }
+    }
+  } catch (e) { /* port closed */ }
+}
+
+async function connect() {
+  if (!("serial" in navigator)) {
+    setStatus("This browser has no Web Serial. Use Chrome or Edge on a computer.");
+    return;
+  }
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+  } catch (e) { setStatus("Connection cancelled or the port is busy (close the Arduino Serial Monitor)."); return; }
+  writer = port.writable.getWriter();
+  gotReady = false;
+  readLoop();
+  statusText.textContent = "Waiting for Arduino to restart...";
+  const t0 = performance.now();
+  while (!gotReady && performance.now() - t0 < 3500) await new Promise(r => setTimeout(r, 50));
+  connected = true;
+  lastSentAt = 0; lastSentStr = "";
+  refreshStatus();
+}
+
+async function disconnect() {
+  connected = false;
+  try { if (reader) await reader.cancel(); } catch (e) {}
+  try { if (pipeDone) await pipeDone; } catch (e) {}
+  try { if (writer) writer.releaseLock(); } catch (e) {}
+  try { if (port) await port.close(); } catch (e) {}
+  port = writer = reader = pipeDone = null;
+  refreshStatus();
+}
+connectBtn.addEventListener("click", () => (connected ? disconnect() : connect()));
+if ("serial" in navigator) {
+  navigator.serial.addEventListener("disconnect", () => { if (connected) { disconnect(); setStatus("Arduino unplugged"); } });
+}
+
+const encoder = new TextEncoder();
+let lastSentAt = 0, lastSentStr = "";
+function maybeSend(now) {
+  if (!connected || !writer) return;
+  const str = "A," + angles.map(a => Math.round(a)).join(",") + "\n";
+  if (str === lastSentStr || now - lastSentAt < SEND_INTERVAL_MS) return;
+  lastSentAt = now; lastSentStr = str;
+  lastSentEl.textContent = str.trim();
+  writer.write(encoder.encode(str)).catch(() => {});
+}
+
+/* ---------- Main loop ---------- */
+const shape = v => {
+  const a = Math.abs(v);
+  if (a < DEADZONE) return 0;
+  return Math.sign(v) * Math.pow((a - DEADZONE) / (1 - DEADZONE), 1.5);   // finer control near centre
+};
+const axis = (pad, kn, kp, vertical) => clamp(shape(vertical ? pad.y : pad.x) + (keys[kp] ? 1 : 0) - (keys[kn] ? 1 : 0), -1, 1);
+
+let prev = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - prev) / 1000); prev = now;
+
+  if (!frozen) {
+    const ax = {
+      base:     axis(padL, "a", "d", false),
+      shoulder: axis(padL, "s", "w", true),
+      wrist:    axis(padR, "arrowleft", "arrowright", false),
+      elbow:    axis(padR, "arrowdown", "arrowup", true),
+      gripper:  (keys["e"] ? -1 : 0) + (keys["q"] ? 1 : 0),
+    };
+    let manual = false;
+    JOINTS.forEach((j, i) => {
+      const a = ax[j.key];
+      if (a) {
+        manual = true;
+        const dir = j.inv ? -1 : 1;
+        angles[i] = clampJoint(i, angles[i] + dir * a * speed * dt);
+      }
+    });
+    if (manual) goal = null;
+
+    if (goal) {
+      let reached = true;
+      const step = speed * dt;
+      for (let i = 0; i < N; i++) {
+        const d = clampJoint(i, goal[i]) - angles[i];
+        if (Math.abs(d) > 0.01) {
+          angles[i] += clamp(d, -step, step);
+          if (Math.abs(clampJoint(i, goal[i]) - angles[i]) > 0.01) reached = false;
+        }
+      }
+      if (reached) goal = null;
+    }
+    maybeSend(now);
+  }
+
+  // draw
+  JOINTS.forEach((j, i) => {
+    const r = rows[i];
+    r.range.style.left = (j.min / SCALE_MAX * 100) + "%";
+    r.range.style.width = ((j.max - j.min) / SCALE_MAX * 100) + "%";
+    r.marker.style.left = (angles[i] / SCALE_MAX * 100) + "%";
+    r.val.textContent = Math.round(angles[i]) + "°";
+  });
+  syncGripRange();
+  if (!gripDrag) gripSlider.value = angles[GI];
+  requestAnimationFrame(frame);
+}
+refreshStatus();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
