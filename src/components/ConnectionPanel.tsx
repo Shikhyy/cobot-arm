@@ -1,6 +1,6 @@
 import { AlertTriangle, Cable, CircleDot, Info, Radio, ShieldCheck, Unplug, Usb, Zap } from "lucide-react";
 
-import { JOINT_ORDER, SERIAL } from "../robot/config";
+import { JOINT_NAMES, JOINT_ORDER, SERIAL } from "../robot/config";
 import { useRobotStore } from "../robot/store";
 import { isWebSerialSupported, isSecureContextForSerial } from "../robot/transport/RobotTransport";
 import type { ControllerApi } from "../robot/useRobotController";
@@ -28,6 +28,20 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
   /* The simulator has no real arm to protect, so the verification gate only
      applies to a physical link. */
   const allVerified = isMock || JOINT_ORDER.every((joint) => limits[joint].calibrated);
+
+  /**
+   * Does the board's own report match what the app asked for?
+   *
+   * If it does, the link is healthy and the frame was understood, so a
+   * machine that is not moving is a mechanical or a power problem, not a
+   * protocol one. That distinction is the whole point of the report.
+   */
+  const commanded = useRobotStore((state) => state.joints);
+  const agreesWithBoard = connection.reported
+    ? JOINT_NAMES.every(
+        (joint) => Math.abs((connection.reported?.[joint] ?? 0) - commanded[joint]) <= 1,
+      )
+    : true;
 
   return (
     <section className="panel p-4" aria-labelledby="connection-heading">
@@ -176,6 +190,19 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
             />
           </div>
           <p className="mono mt-2 truncate text-[11px] text-mist-400">last: {connection.lastMessage}</p>
+
+          {/*
+            The controller's own report. It is the operator's proof that the
+            link is alive and that the board understood the frame — the
+            servos have no position feedback, so this is the board's
+            commanded targets, not where the arm actually is.
+          */}
+          {connection.reported ? (
+            <p className="mono mt-1.5 truncate text-[10.5px] text-mist-500">
+              board: {JOINT_NAMES.map((j) => Math.round(connection.reported?.[j] ?? 0)).join(",")}
+              {agreesWithBoard ? " — agrees with the app" : " — DIFFERS from the app"}
+            </p>
+          ) : null}
         </div>
 
         {connection.error ? (
@@ -229,7 +256,7 @@ export function ConnectionPanel({ controller }: { controller: ControllerApi }) {
               onClick={() => void controller.arm()}
               title={
                 allVerified
-                  ? "Sends the home pose (90, 110, 95, 90, 75) first, then accepts motion. Make sure that pose is safe on your machine."
+                  ? "Sends the home pose first, then accepts motion. Make sure that pose is safe on your machine."
                   : "Verify every joint range first"
               }
             >

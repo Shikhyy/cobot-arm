@@ -22,7 +22,7 @@ export type JointFrame = Record<JointName, number>;
 
 /** Result of parsing one incoming line. */
 export type ParsedLine =
-  | { kind: "ready" }
+  | { kind: "ready"; channels?: number }
   | { kind: "pong" }
   | { kind: "joints"; frame: JointFrame }
   | { kind: "error"; code: string; detail?: string }
@@ -61,6 +61,16 @@ export function parseLine(raw: string): ParsedLine {
   if (!line) return { kind: "unknown", raw };
 
   if (line === "READY") return { kind: "ready" };
+  /**
+   * `READY,<channels>` — the v2 sketch announces how many servo channels it
+   * speaks. The app compares that with its own frame, so a board still
+   * running the original five-channel sketch is caught immediately instead
+   * of looking like a dead arm.
+   */
+  if (line.startsWith("READY,")) {
+    const channels = Number(line.slice(6).trim());
+    return { kind: "ready", channels: Number.isFinite(channels) ? channels : undefined };
+  }
   if (line === "PONG") return { kind: "pong" };
 
   if (line.startsWith("ERR")) {

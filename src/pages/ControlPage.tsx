@@ -14,6 +14,7 @@ import { MotionSettings } from "../components/MotionSettings";
 import { CalibrationPanel } from "../components/CalibrationPanel";
 import { RobotStatus } from "../components/RobotStatus";
 import { ViewSwitcher } from "../components/ViewSwitcher";
+import { CommandNotice } from "../components/CommandNotice";
 import { QuickStart } from "../components/QuickStart";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { useRobotController } from "../robot/useRobotController";
@@ -118,6 +119,8 @@ export function ControlPage() {
                 </button>
               </div>
             </div>
+
+            <CommandNotice onArm={() => void controller.arm()} />
 
             <p className="hidden items-center gap-2 text-[11px] text-mist-500 lg:flex">
               <Move3d size={12} aria-hidden />

@@ -40,6 +40,15 @@ export interface ConnectionState {
   lastMessage: string;
   error: string | null;
   hint: string | null;
+  /**
+   * The controller's own report of its targets, from the `T` verb.
+   *
+   * This is the only thing the board ever says about itself, and it is the
+   * operator's proof that the link is alive and that the board understood
+   * the frame: the servos have no position feedback, so the report is of
+   * the commanded angles, not of where the arm actually is.
+   */
+  reported: JointAngles | null;
   /** Timestamp of the last byte in either direction. */
   lastActivity: number;
   txCount: number;
@@ -226,6 +235,7 @@ export const useRobotStore = create<RobotState>((set, get) => ({
     ready: false,
     grantedPorts: 0,
     lastMessage: "—",
+    reported: null,
     error: null,
     hint: null,
     lastActivity: 0,

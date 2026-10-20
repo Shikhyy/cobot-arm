@@ -38,7 +38,8 @@ export class MockRobotTransport implements RobotTransport {
     await delay(320);
     if (this.disposed) return;
     this.setStatus("connected", "Simulated controller running. No hardware is attached.");
-    this.events.onLine("READY");
+    /* The same handshake the v2 sketch sends: the channel count. */
+    this.events.onLine(`READY,${JOINT_NAMES.length}`);
 
     this.timer = window.setInterval(() => {
       const values = JOINT_NAMES.map((name) => Math.round(this.state[name])).join(",");

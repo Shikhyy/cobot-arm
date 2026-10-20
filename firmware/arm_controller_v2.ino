@@ -19,7 +19,7 @@
     T                         Report the current targets as T,b,s,e,w,g
 
   Replies:
-    READY                     printed once at boot
+    READY,<n>                 printed once at boot; n = the channel count
     PONG                      answer to P
     T,b,s,e,w,g               the current target angles
     ERR,<code>                the last command was rejected
@@ -165,26 +165,45 @@ void applyTargets(const int *values) {
   for (uint8_t i = 0; i < NUM_JOINTS; i++) {
     target[i] = constrain(values[i], MIN_ANGLE[i], MAX_ANGLE[i]);
   }
-  if (!attached) {
-    // First command after power-up: the servos are not attached yet, so the
-    // arm is wherever its mechanical spring left it and we do not know where.
-    // Rather than snapping to the commanded angle (which is how the original
-    // arm_controller.ino behaves, and which can slam the arm into a stop),
-    // attach the servos at the HOME pose and let the normal 3 deg/20 ms ramp
-    // walk the arm there. The move is then slow, bounded and predictable.
-    for (uint8_t i = 0; i < NUM_JOINTS; i++) {
-      current[i] = (float)HOME_ANGLE[i];
-      servos[i].write(HOME_ANGLE[i]);
-      servos[i].attach(PINS[i]);
-    }
-    attached = true;
-    Serial.println("OK,ATTACHED");
-  }
+  // The servos are attached by attachNextServo() in the main loop, one at a
+  // time. Attaching all of them here would snap the whole machine to the
+  // home pose in a single instant, which is exactly the lurch the original
+  // arm_controller.ino gives on its first command.
   if (!shoulderPairConsistent()) {
     Serial.println("ERR,SHOULDER-PAIR");
   }
   frozen = false;
   lastCommandAt = millis();
+}
+
+/*
+ * Attach the servos one at a time.
+ *
+ * A servo that has never been written sits at the middle of its travel, so
+ * the moment it is attached it moves — there is no way to attach one
+ * without it moving. But one at a time is the difference between a single
+ * controlled lurch and the whole machine snapping over at once, which on a
+ * six-axis arm is how a printed part breaks.
+ *
+ * Each servo is written to its home angle first, and the pause between
+ * them lets the operator (and the arm) settle.
+ */
+void attachNextServo(void) {
+  static uint8_t step = 0;
+  static unsigned long lastAttach = 0;
+  if (attached || step >= NUM_JOINTS) return;
+  if (step > 0 && millis() - lastAttach < 140) return;
+
+  current[step] = (float)HOME_ANGLE[step];
+  servos[step].write(HOME_ANGLE[step]);
+  servos[step].attach(PINS[step]);
+
+  step++;
+  lastAttach = millis();
+  if (step >= NUM_JOINTS) {
+    attached = true;
+    Serial.println("OK,ATTACHED");
+  }
 }
 
 void handleLine(char *line) {
@@ -255,7 +274,12 @@ void setup() {
     current[i] = (float)HOME_ANGLE[i];
     target[i] = HOME_ANGLE[i];
   }
-  Serial.println("READY");
+  // Announce the protocol: the channel count tells the app how to talk to
+  // this board. A board running the original five-channel sketch answers a
+  // bare READY, and the app says so instead of leaving the operator with a
+  // model that moves and an arm that does not.
+  Serial.print("READY,");
+  Serial.println(NUM_JOINTS);
 }
 
 void loop() {
@@ -276,6 +300,9 @@ void loop() {
       }
     }
   }
+
+  // ── attach the servos, one at a time ─────────────────────────────────────
+  attachNextServo();
 
   // ── watchdog ──────────────────────────────────────────────────────────────
   if (attached && !frozen && (millis() - lastCommandAt) > WATCHDOG_MS) {

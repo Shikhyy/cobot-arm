@@ -220,7 +220,9 @@ it does **not** drive this machine and the app's frames will not parse on it.
    board has one.
 5. Upload.
 
-The controller answers `READY` on the serial monitor at 115200 baud, 8N1.
+The controller answers `READY,7` on the serial monitor at 115200 baud, 8N1 —
+the `7` is the number of servo channels it speaks, which is how the app
+knows it is talking to the right firmware.
 
 ### Powering the servos
 
@@ -295,7 +297,11 @@ Arduino IDE → open firmware/arm_controller_v2.ino
              → Upload
 ```
 
-It answers `READY` at 115200 baud.
+It answers `READY,7` at 115200 baud — the channel count is the protocol
+version. The app compares it with its own frame, so a board still running
+the original five-channel sketch is reported as a mismatch instead of
+looking like a dead arm. (The original sketch answers a bare `READY`, and
+the app says so too.)
 
 ### 3. Connect
 
@@ -349,9 +355,27 @@ disarmed.
 
 ### If the arm does not move
 
+**Start with the strip under the viewport.** It says, in one line, whether
+the link is up and whether the motors are armed — the 3D view always shows
+the commanded pose, so the model moving tells you nothing about whether a
+single byte went out.
+
+| What the strip says | What it means |
+| --- | --- |
+| *Preview only* — the motors are disarmed | The numbers move, nothing is sent. Press **Arm the motors** (it needs all six joint ranges verified first). |
+| *Waiting for the board* | The port is open, the controller has not said `READY` yet. |
+| *Live* | The frames are going out. If the arm still does not move, the problem is the board, the wiring or the power, not the app. |
+| *Board connected* but a red protocol error | The board speaks a different number of channels — flash `firmware/arm_controller_v2.ino`. |
+
+The **Serial traffic** box shows the board's own report of its targets
+(`board: 90,0,180,180,90,150,90 — agrees with the app`). That report is the
+end of the line: if the app's numbers and the board's numbers agree, the
+frame was understood and the fault is mechanical or electrical.
+
 | Symptom | Cause and fix |
 | --- | --- |
 | The numbers move, the arm does not | The motors are not armed. Press **Arm the motors**; check every joint says *Verified*. |
+| The app says *Live* and the board agrees, but the arm is still | The servos have no power, or they are on the wrong pins. The board's report is of its **targets**, not of where the arm is. |
 | No `READY`, traffic counter stuck at 0 | Wrong port, a charge-only USB cable, the IDE still holds the port, or the sketch is not running. Try the simulator to prove the interface itself is fine. |
 | The board keeps dropping out mid-move | The servo supply is sagging. Separate supply, shared ground. |
 | A joint moves the wrong axis | Your wiring order differs from the firmware's pin map. Either re-order `PINS` in the sketch, or swap the two entries for that joint in `src/robot/config.ts`. |
@@ -449,6 +473,11 @@ arm was physically in, the first slider move **snaps** it to that angle — at
 full speed, with no ramp. `arm_controller_v2.ino` now attaches the servos at
 the **home** pose and lets the normal 3°/20 ms ramp walk the arm there, so
 the first move is slow, bounded and predictable.
+
+A servo that has never been written moves the moment it is attached, so the
+sketch attaches the seven **one at a time**, 140 ms apart, each written to
+its home angle first. One controlled lurch per servo is a very different
+thing from the whole machine snapping over at once.
 
 The original sketch is also the wrong pin map for this machine — it drives five
 servos on D3, D5, D6, D9 and D10, where the prototype has seven on D13, D9,

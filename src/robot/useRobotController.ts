@@ -76,9 +76,43 @@ export function useRobotController(): ControllerApi {
       const parsed = parseLine(line);
       switch (parsed.kind) {
         case "ready":
+          /**
+           * The board announces its protocol.
+           *
+           * The v2 sketch answers `READY,7` — seven channels. The original
+           * five-channel sketch answers a bare `READY`, and the app's frames
+           * would be mis-parsed by it, so the machine would move the wrong
+           * joints (or not move at all) while the 3D view looked perfectly
+           * happy. Say so here, loudly, instead of leaving the operator to
+           * guess.
+           */
+          if (parsed.channels !== undefined && parsed.channels !== JOINT_NAMES.length) {
+            store.getState().setConnection({
+              lastMessage: `READY — board speaks ${parsed.channels} channels`,
+              ready: true,
+              error:
+                `This board speaks ${parsed.channels} servo channels, but the app sends ` +
+                `${JOINT_NAMES.length}. Flash firmware/arm_controller_v2.ino — the original ` +
+                `arm_controller.ino parses a five-channel frame and will drive the wrong joints.`,
+            });
+            break;
+          }
+          if (parsed.channels === undefined) {
+            store.getState().setConnection({
+              lastMessage: "READY — controller booted",
+              ready: true,
+              hint:
+                "The board did not announce its protocol version. If the model moves but the arm " +
+                "does not, this board is probably still running the original arm_controller.ino — " +
+                "flash firmware/arm_controller_v2.ino, which speaks the seven channels the app sends.",
+            });
+            break;
+          }
           store.getState().setConnection({
-            lastMessage: "READY — controller booted",
+            lastMessage: `READY — ${parsed.channels} channels, controller booted`,
             ready: true,
+            hint: null,
+            error: null,
           });
           break;
         case "pong":
@@ -87,7 +121,10 @@ export function useRobotController(): ControllerApi {
         case "joints":
           // The controller reporting its own targets. We do NOT overwrite the
           // commanded angles: they are ours. We only surface it as telemetry.
-          store.getState().setConnection({ lastMessage: `T ${describeFrame(parsed.frame)}` });
+          store.getState().setConnection({
+            lastMessage: `T ${describeFrame(parsed.frame)}`,
+            reported: parsed.frame,
+          });
           break;
         case "error":
           store.getState().setConnection({

@@ -142,6 +142,26 @@ console.log("\n2. Partial reads and batched frames");
   check("three frames in one read are split", batch.length === 3);
   check("PONG parses", parseLine("PONG").kind === "pong");
   check("READY parses", parseLine("READY").kind === "ready");
+
+  /* The board announces how many channels it speaks, so a board still
+     running the original five-channel sketch is caught instead of looking
+     like a dead arm. */
+  const readyV2 = parseLine(`READY,${JOINT_NAMES.length}`);
+  check("READY with a channel count parses", readyV2.kind === "ready");
+  check(
+    "the channel count is read",
+    readyV2.kind === "ready" && readyV2.channels === JOINT_NAMES.length,
+  );
+  const readyOld = parseLine("READY");
+  check(
+    "a bare READY reports no channel count",
+    readyOld.kind === "ready" && readyOld.channels === undefined,
+  );
+  const readyWrong = parseLine("READY,5");
+  check(
+    "a five channel board is recognised as a mismatch",
+    readyWrong.kind === "ready" && readyWrong.channels === 5,
+  );
   check("a T report parses", parseLine("T,90,0,180,180,90,150,90").kind === "joints");
   check("a six value T report is rejected", parseLine("T,90,0,180,180,90,150").kind === "unknown");
   check("an error reply parses", parseLine("ERR,TIMEOUT").kind === "error");
